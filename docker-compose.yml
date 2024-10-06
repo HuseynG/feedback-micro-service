@@ -3,60 +3,40 @@ version: '3.8'
 services:
   app:
     build:
-      context: ./app  # Ensure the context is set to the ./app directory
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      context: ./app
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./app:/app  # Mount the app directory to the container
+      - ./app:/app
     ports:
       - "8000:8000"
     depends_on:
       - rabbitmq
+    env_file:
+      - ./.env
     environment:
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - AZURE_SQL_DRIVER=${AZURE_SQL_DRIVER}
-      - AZURE_SQL_SERVER=${AZURE_SQL_SERVER}
-      - AZURE_SQL_PORT=${AZURE_SQL_PORT}
-      - AZURE_SQL_DATABASE=${AZURE_SQL_DATABASE}
-      - AZURE_SQL_USERNAME=${AZURE_SQL_USERNAME}
-      - AZURE_SQL_PASSWORD=${AZURE_SQL_PASSWORD}
-      - AZURE_SQL_ENCRYPT=${AZURE_SQL_ENCRYPT}
-      - AZURE_SQL_TRUST_CERTIFICATE=${AZURE_SQL_TRUST_CERTIFICATE}
-      - TIMEOUT=${TIMEOUT}
-      - PYTHONPATH=/
-  
+      - PYTHONPATH=/app
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
-      - "15672:15672"  # Management UI
+      - "15672:15672"
+    env_file:
+      - ./.env
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - PYTHONPATH=/
 
   consumer:
     build:
-      context: .  # Set build context to the root directory
-      dockerfile: consumer/Dockerfile  # Use the Dockerfile in the consumer directory
+      context: ./consumer
+      dockerfile: Dockerfile
     volumes:
       - ./consumer:/consumer
-      - ./app:/consumer/app  # Mount the app directory to /consumer/app inside the container
+      - ./app:/consumer/app
     depends_on:
       - rabbitmq
+    env_file:
+      - ./.env
     environment:
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - AZURE_SQL_DRIVER=${AZURE_SQL_DRIVER}
-      - AZURE_SQL_SERVER=${AZURE_SQL_SERVER}
-      - AZURE_SQL_PORT=${AZURE_SQL_PORT}
-      - AZURE_SQL_DATABASE=${AZURE_SQL_DATABASE}
-      - AZURE_SQL_USERNAME=${AZURE_SQL_USERNAME}
-      - AZURE_SQL_PASSWORD=${AZURE_SQL_PASSWORD}
-      - AZURE_SQL_ENCRYPT=${AZURE_SQL_ENCRYPT}
-      - AZURE_SQL_TRUST_CERTIFICATE=${AZURE_SQL_TRUST_CERTIFICATE}
-      - TIMEOUT=${TIMEOUT}
-      - PYTHONPATH=/consumer
+      - PYTHONPATH=/consumer:/consumer/app

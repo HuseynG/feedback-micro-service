@@ -1,6 +1,6 @@
 # consumer/Dockerfile
 
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Install ODBC Driver and dependencies
 RUN apt-get update && \
@@ -15,16 +15,15 @@ RUN apt-get update && \
 WORKDIR /consumer
 
 # Copy requirements
-COPY consumer/requirements.txt .
+COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY consumer/consumer.py .
-COPY app /consumer/app  
-COPY .env ./
+COPY consumer.py .
 
-# Set PYTHONPATH to include the /consumer directory
-ENV PYTHONPATH=/consumer
+# Note: Removed copying of app and .env as they are mounted via volumes and environment variables are managed via docker-compose.yml
 
 # Start the consumer application
 CMD ["python", "consumer.py"]

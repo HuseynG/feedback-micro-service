@@ -8,8 +8,8 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 # Import the Item model and Base class from the app module
-from app.models import Item  # Import the Item model from the app
-from app.database import Base  # Import the Base class
+from app.db.models import Item  # Import the Item model from the app
+from app.db.database import Base  # Import the Base class
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
