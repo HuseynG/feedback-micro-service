@@ -10,15 +10,15 @@ class Item(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), index=True, nullable=False)
     description = Column(String(500), nullable=True)
-    owner_id = Column(Integer, ForeignKey('users.id'))
+#     owner_id = Column(Integer, ForeignKey('users.id'))
 
-    owner = relationship("User", back_populates="items")
+#     owner = relationship("User", back_populates="items")
 
-class User(Base):
-    __tablename__ = 'users'
+# class User(Base):
+#     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
+#     id = Column(Integer, primary_key=True, index=True)
+#     username = Column(String(50), unique=True, index=True, nullable=False)
+#     email = Column(String(100), unique=True, index=True, nullable=False)
 
-    items = relationship("Item", back_populates="owner")
+#     items = relationship("Item", back_populates="owner")

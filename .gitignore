@@ -1,2 +1,7 @@
 venv
 .env
+**/__pycache__
+app/core/__pycache__
+app/db/__pycache__
+alembic/version/__pycache__
+*.pyc
