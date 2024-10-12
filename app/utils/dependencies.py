@@ -1,3 +1,5 @@
 # app/utils/dependencies.py
-from fastapi import Depends
-# Future shared dependencies can be added here
+from fastapi import Request
+
+def get_database(request: Request):
+    return request.app.database

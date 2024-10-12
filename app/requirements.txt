@@ -6,3 +6,5 @@ pydantic
 pydantic-settings
 aio_pika
 python-dotenv
+pymongo
+pymongo[bson]
