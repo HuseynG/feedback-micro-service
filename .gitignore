@@ -1,7 +1,26 @@
-venv
-.env
-**/__pycache__
-app/core/__pycache__
-app/db/__pycache__
-alembic/version/__pycache__
+# ===============================
+# Virtual Environment
+# ===============================
+venv/
+.env/
+
+# ===============================
+# Python Bytecode and Cache
+# ===============================
+# Ignore all __pycache__ directories
+__pycache__/
+**/__pycache__/
+
+# Ignore all compiled Python files
 *.pyc
+
+# ===============================
+# Specific __pycache__ Directories (Optional)
+# ===============================
+# These are redundant if __pycache__/ is already ignored globally
+# Uncomment if you need to specifically ensure these are ignored
+# app/core/__pycache__/
+# app/db/__pycache__/
+# alembic/version/__pycache__/
+.env
+*.log
