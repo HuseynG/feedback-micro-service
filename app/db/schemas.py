@@ -64,7 +64,7 @@ class InterviewBase(BaseModel):
     @field_validator('role_level', mode='before')
     def validate_role_level(cls, value):
         allowed_role_levels = {
-            'internship', 'entry level', 'associate', 'mid senior level',
+            'internship', 'entry_level', 'associate', 'mid_senior_level',
             'senior level', 'director', 'executive'
         }
         if value in allowed_role_levels:
