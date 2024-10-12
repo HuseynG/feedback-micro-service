@@ -20,8 +20,8 @@ class PyObjectId(ObjectId):
         return {"type": "string", "pattern": "^[a-fA-F0-9]{24}$"}
 
 class ProfileData(BaseModel):
-    cv: str
-    cover_letter: str
+    cv: Optional[str] = None
+    cover_letter: Optional[str] = None
 
 class QA(BaseModel):
     question: str
@@ -72,6 +72,31 @@ class InterviewBase(BaseModel):
         raise ValueError(
             f'Invalid value for "role_level": {value}. Must be one of {allowed_role_levels}.'
         )
+    def get_combined_job_info(self) -> str:
+        """
+        Combines the job title and job description into a single string.
+        If one of them is missing, it returns the available one.
+        If both are present, they are concatenated with a separator.
+        """
+        parts = []
+        if self.job_title:
+            parts.append(f"Job Title: {self.job_title}")
+        if self.job_description:
+            parts.append(f"Job Description: {self.job_description}")
+        if self.question_type:
+            parts.append(f"Question Type: {self.question_type}")
+        if self.role_level:
+            parts.append(f"Role Level: {self.role_level}")
+        if self.company_name:
+            parts.append(f"Company Name: {self.company_name}")
+        if self.profile_data.cv:
+            parts.append(f"User CV: {self.company_name}")
+        if self.profile_data.cover_letter:
+            parts.append(f"User Cover Letter: {self.company_name}")
+        if self.industry_standard:
+            parts.append(f"Industry Standard: Also, consider latest development, technologies, terms and practices, etc.")
+        
+        return " | ".join(parts) if parts else "No Job Information Provided."
 
 class InterviewCreate(InterviewBase):
     pass
