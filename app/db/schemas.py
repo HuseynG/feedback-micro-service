@@ -19,14 +19,42 @@ class PyObjectId(ObjectId):
     def __get_pydantic_json_schema__(cls) -> JsonSchemaValue:
         return {"type": "string", "pattern": "^[a-fA-F0-9]{24}$"}
 
+class QuestionBody(BaseModel):
+    question: str = Field(..., description="The question to provide feedback for")
+    answer: str = Field(..., description="The answer to the question by user")
+
+    def get_combined_Q_info(self) -> str:
+        parts = []
+        if self.question:
+            parts.append(f"Question: {self.question}")
+        if self.answer:
+            parts.append(f"User Answer: {self.answer}")
+
+        return " | ".join(parts) if parts else "No Question Information Provided."
+
 class ProfileData(BaseModel):
     cv: Optional[str] = None
     cover_letter: Optional[str] = None
 
+class QA_Feedback_Model_Content(BaseModel):
+    rating: float
+    feedback: str
+
+class QA_Feedback_Model(BaseModel):
+    content: Optional[QA_Feedback_Model_Content] = None
+    coherence: Optional[QA_Feedback_Model_Content] = None
+    confidence: Optional[QA_Feedback_Model_Content] = None
+    relevance: Optional[QA_Feedback_Model_Content] = None
+    professionalism: Optional[QA_Feedback_Model_Content] = None
+    appropriateness: Optional[QA_Feedback_Model_Content] = None
+    overal_summary: Optional[QA_Feedback_Model_Content] = None
+
 class QA(BaseModel):
     question: str
-    user_answer: Optional[str] = None
+    original_user_answer: Optional[str] = None
+    ai_modified_user_answer: Optional[str] = None
     ideal_answer: Optional[str] = None
+    ai_feedback: Optional[QA_Feedback_Model] = None
 
 class InterviewBase(BaseModel):
     user: str
