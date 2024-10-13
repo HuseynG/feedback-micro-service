@@ -10,33 +10,33 @@ services:
       - ./app:/app
     ports:
       - "8000:8000"
-    depends_on:
-      - rabbitmq
+    # depends_on:
+    #   - rabbitmq
     env_file:
       - ./.env
     environment:
       - PYTHONPATH=/app
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    env_file:
-      - ./.env
-    environment:
-      - PYTHONPATH=/
+  # rabbitmq:
+  #   image: rabbitmq:3-management
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   env_file:
+  #     - ./.env
+  #   environment:
+  #     - PYTHONPATH=/
 
-  consumer:
-    build:
-      context: ./consumer
-      dockerfile: Dockerfile
-    volumes:
-      - ./consumer:/consumer
-      - ./app:/consumer/app
-    depends_on:
-      - rabbitmq
-    env_file:
-      - ./.env
-    environment:
-      - PYTHONPATH=/consumer:/consumer/app
+  # consumer:
+  #   build:
+  #     context: ./consumer
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./consumer:/consumer
+  #     - ./app:/consumer/app
+  #   depends_on:
+  #     - rabbitmq
+  #   env_file:
+  #     - ./.env
+  #   environment:
+  #     - PYTHONPATH=/consumer:/consumer/app
