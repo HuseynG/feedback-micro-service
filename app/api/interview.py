@@ -18,6 +18,32 @@ router = APIRouter(
 ai_generator = AI_Generator()
 
 # TODO: Get list of interviews a user has, paginations needds to be done 10 intervies per page. 
+@router.get("/list/{user}", response_model=List[schemas.InterviewSummary])
+async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Depends(get_database)):
+    """
+    Retrieves a paginated list of interviews for a specific user, returning only key information.
+    10 interviews per page by default.
+    """
+    # Ensure valid pagination limit
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="Limit must be greater than zero.")
+    
+    # Fetch interviews for the specified user
+    interviews = db.interviews.find({"user": user}, {
+        "job_title": 1,
+        "job_description": 1,
+        "question_type": 1,
+        "role_level": 1,
+    }).skip(skip).limit(limit)
+    
+    # Convert each interview to the correct schema format
+    interviews_list = []
+    for interview in interviews:
+        interview['_id'] = schemas.PyObjectId(interview['_id'])
+        interviews_list.append(schemas.InterviewSummary(**interview))
+    
+    return interviews_list
+
 
 
 

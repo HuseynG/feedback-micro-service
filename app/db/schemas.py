@@ -36,6 +36,12 @@ class ProfileData(BaseModel):
     cv: Optional[str] = None
     cover_letter: Optional[str] = None
 
+class InterviewSummary(BaseModel):
+    job_title: str
+    job_description: Optional[str] = None
+    question_type: str
+    role_level: str
+
 class QA_Feedback_Model_Content(BaseModel):
     rating: float
     feedback: str
