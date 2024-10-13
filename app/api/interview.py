@@ -60,7 +60,7 @@ async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_da
     interview_dict["_id"] = PyObjectId(result.inserted_id)  # Convert to PyObjectId
     return schemas.Interview(**interview_dict)
 
-@router.get("/get_interview/{user}/{interview_id}", response_model=schemas.Interview)
+@router.get("/get_interview/{user}/{interview_id}", response_model=schemas.QA)
 async def get_interview(user:str ,interview_id: str, db=Depends(get_database)):
     """
     Retrieves an interview by its ID.
@@ -80,7 +80,7 @@ async def get_interview(user:str ,interview_id: str, db=Depends(get_database)):
     interview['_id'] = schemas.PyObjectId(interview['_id'])
     return schemas.Interview(**interview)
 
-@router.put("/generate_interview_feedback/{user}/{interview_id}", response_model=schemas.Interview)
+@router.put("/generate_interview_feedback/{user}/{interview_id}", response_model=schemas.QA)
 async def generate_interview_feedback(
     user: str,
     interview_id: str,
@@ -150,7 +150,10 @@ async def generate_interview_feedback(
     # Convert '_id' from ObjectId to PyObjectId
     updated_interview['_id'] = schemas.PyObjectId(updated_interview['_id'])
         
-    return schemas.Interview(**updated_interview)
+    qa_item = next((qa for qa in updated_interview["QAs"] if qa["question"] == body.question), None)
+    if not qa_item:
+        raise HTTPException(status_code=404, detail="Question not found in updated interview")
+    return schemas.QA(**qa_item)
 
 # @router.delete("/{interview_id}")
 # async def delete_interview(interview_id: str, db=Depends(get_database)):
