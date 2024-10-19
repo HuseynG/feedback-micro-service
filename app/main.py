@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
 from api import interview  # Import your interview router
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
+from utils.auth import verify_api_key
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -32,7 +33,7 @@ async def lifespan(app: FastAPI):
     print("Disconnected from MongoDB!")
 
 # Initialize FastAPI app with the lifespan protocol
-app = FastAPI(title="Modular FastAPI Application", lifespan=lifespan)
+app = FastAPI(title="Modular FastAPI Application", lifespan=lifespan, dependencies=[Depends(verify_api_key)])
 
 # Include API routers
 app.include_router(interview.router)
