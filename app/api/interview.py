@@ -321,17 +321,14 @@ async def generate_followup_questions(
     # Default case: Return an empty list if no follow-up questions were added
     return []
 
-
-
-# TODO: Delete an interview
-# @router.delete("/{interview_id}")
-# async def delete_interview(interview_id: str, db=Depends(get_database)):
-#     """
-#     Deletes an interview from MongoDB.
-#     """
-#     if not ObjectId.is_valid(interview_id):
-#         raise HTTPException(status_code=400, detail="Invalid interview ID")
-#     result = db.interviews.delete_one({"_id": ObjectId(interview_id)})
-#     if result.deleted_count == 0:
-#         raise HTTPException(status_code=404, detail="Interview not found")
-#     return {"message": "Interview deleted successfully"}
+@router.delete("/delete-interview/{user}/{interview_id}")
+async def delete_interview(interview_id: str, db=Depends(get_database)):
+    """
+    Deletes an interview from MongoDB.
+    """
+    if not ObjectId.is_valid(interview_id):
+        raise HTTPException(status_code=400, detail="Invalid interview ID")
+    result = db.interviews.delete_one({"_id": ObjectId(interview_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    return {"message": "Interview deleted successfully"}
