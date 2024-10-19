@@ -22,11 +22,10 @@ ai_generator = AI_Generator()
 async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Depends(get_database)):
     """
     Retrieves a paginated list of interviews for a specific user, returning only key information.
-    10 interviews per page by default.
     """
     # Ensure valid pagination limit
-    if limit <= 0:
-        raise HTTPException(status_code=400, detail="Limit must be greater than zero.")
+    if limit <= 0 or skip < 0:
+        raise HTTPException(status_code=400, detail="Pagination limit and skip must be greater than zero.")
     
     # Fetch interviews for the specified user
     interviews = db.interviews.find({"user": user}, {
@@ -36,11 +35,15 @@ async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Dep
         "role_level": 1,
     }).skip(skip).limit(limit)
     
-    # Convert each interview to the correct schema format
     interviews_list = []
     for interview in interviews:
         interview['interview_id'] = str(schemas.PyObjectId(interview['_id']))
         interviews_list.append(schemas.InterviewSummary(**interview))
+    
+    # If no interviews found, return 404
+    if not interviews_list:
+        raise HTTPException(status_code=404, detail="No interviews found for the user.")
+    
     return interviews_list
 
 @router.post("/generate-question", response_model=schemas.Interview)
@@ -48,11 +51,24 @@ async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_da
     """
     Creates a new interview entry in MongoDB.
     """
-    res = ai_generator.generate_questions(interview.get_combined_job_info())
-    logger.debug(f"calling create_interview: {res}")
+    # Ensure all required fields are present in the schema
+    if not interview.job_title and not interview.job_description:
+        raise HTTPException(status_code=400, detail="Job title or description type are required fields.")
+    
+    try:
+        res = ai_generator.generate_questions(interview.get_combined_job_info())
+    except Exception as e:
+        logger.error(f"AI question generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Error generating questions.")
+    
     interview_dict = interview.model_dump(by_alias=True)
     interview_dict['QAs'] = res['qas']
+    
     result = db.interviews.insert_one(interview_dict)
+    
+    if not result.inserted_id:
+        raise HTTPException(status_code=500, detail="Failed to create interview in the database.")
+    
     interview_dict["_id"] = PyObjectId(result.inserted_id)  # Convert to PyObjectId
     return schemas.Interview(**interview_dict)
 
@@ -61,18 +77,20 @@ async def get_interview(user: str, interview_id: str, db=Depends(get_database)):
     """
     Retrieves an interview by its ID.
     """
+    # Validate interview_id
     if not ObjectId.is_valid(interview_id):
         raise HTTPException(status_code=400, detail="Invalid interview ID")
     
     interview = db.interviews.find_one({"_id": ObjectId(interview_id)})
     
+    # If interview is not found
     if interview is None:
         raise HTTPException(status_code=404, detail="Interview not found")
     
+    # If the user does not have access to this interview
     if user != interview['user']:
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
-    # Convert '_id' from ObjectId to PyObjectId
     interview['_id'] = schemas.PyObjectId(interview['_id'])
     
     return schemas.Interview(**interview)
@@ -87,6 +105,7 @@ async def generate_interview_feedback(
     """
     Updates an existing interview by adding feedback to a specific question or its follow-up questions.
     """
+    # Validate interview_id
     if not ObjectId.is_valid(interview_id):
         raise HTTPException(status_code=400, detail="Invalid interview ID")
     
@@ -100,12 +119,20 @@ async def generate_interview_feedback(
     if user != interview.get('user'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
+    # Ensure 'QAs' exist in the interview
+    if 'QAs' not in interview or not interview['QAs']:
+        raise HTTPException(status_code=404, detail="No QA entries found in the interview.")
+    
     # Find the QA entry with the specified question or its follow-up
     qa_list = interview.get('QAs', [])
     qa_found = False
     followup_found = False
     
-    # Convert '_id' to PyObjectId
+    # Validate body content for feedback generation
+    if not body.question or not body.answer:
+        raise HTTPException(status_code=400, detail="Both question and answer must be provided.")
+    
+    # Copy the interview and update '_id'
     temp_interview = copy.copy(interview)
     temp_interview['_id'] = schemas.PyObjectId(temp_interview['_id'])
     
@@ -153,7 +180,7 @@ async def generate_interview_feedback(
             break  # Exit the outer loop if we found a follow-up question
 
     if not qa_found and not followup_found:
-        raise HTTPException(status_code=404, detail="Question not found in the interview")
+        raise HTTPException(status_code=404, detail="Question or follow-up question not found in the interview.")
     
     # Update the interview document in the database
     update_result = db.interviews.update_one(
@@ -162,7 +189,7 @@ async def generate_interview_feedback(
     )
     
     if update_result.modified_count == 0:
-        raise HTTPException(status_code=500, detail="Failed to update the interview")
+        raise HTTPException(status_code=500, detail="Failed to update the interview with feedback.")
     
     # Fetch the updated interview document
     updated_interview = db.interviews.find_one({"_id": ObjectId(interview_id)})
@@ -185,11 +212,9 @@ async def generate_interview_feedback(
                 break
 
     if not qa_item:
-        raise HTTPException(status_code=404, detail="Question not found in updated interview")
+        raise HTTPException(status_code=404, detail="Question not found in updated interview.")
     
     return schemas.QA(**qa_item)
-
-
 
 @router.put("/follow-up/{user}/{interview_id}", response_model=List[schemas.FollowupQA])
 async def generate_followup_questions(
@@ -201,16 +226,18 @@ async def generate_followup_questions(
     """
     Updates an existing interview by adding follow-up to a specific question and returns follow-up questions.
     """
+    # Validate interview_id
     if not ObjectId.is_valid(interview_id):
         raise HTTPException(status_code=400, detail="Invalid interview ID")
     
     # Fetch the interview document
     interview = db.interviews.find_one({"_id": ObjectId(interview_id)})
     
+    # If interview is not found
     if interview is None:
         raise HTTPException(status_code=404, detail="Interview not found")
     
-    # Check if the user has access to this interview
+    # If the user does not have access to this interview
     if user != interview.get('user'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
@@ -280,19 +307,19 @@ async def generate_followup_questions(
                 {"$push": {"QAs.$.followup_qas": {"$each": followup_qas}}}  # Append new follow-ups instead of replacing the list
             )
             
+            # If the database update fails (e.g., no modification made)
             if update_result.modified_count == 0:
                 raise HTTPException(status_code=500, detail="Failed to update the interview")
             
             # Return the newly generated follow-up QAs
             return followup_qas
 
+    # If no QA is found for the provided question
     if not qa_found:
         raise HTTPException(status_code=404, detail="Question not found in the interview")
     
-    # If no updates were needed, return an empty list (default behavior)
+    # Default case: Return an empty list if no follow-up questions were added
     return []
-
-
 
 
 
