@@ -1,24 +1,30 @@
-# app/db/schemas.py
 from typing import Optional, List, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 from bson import ObjectId
 from pydantic.json_schema import JsonSchemaValue
 
+
+# Define a custom ObjectId class for use with Pydantic
 class PyObjectId(ObjectId):
     @classmethod
     def __get_pydantic_validators__(cls):
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: Any, info) -> 'PyObjectId':
+    def validate(cls, value: Any) -> 'PyObjectId':
         if not ObjectId.is_valid(value):
             raise ValueError(f'Invalid ObjectId: {value}')
         return cls(value)  # Return PyObjectId instance
 
     @classmethod
-    def __get_pydantic_json_schema__(cls) -> JsonSchemaValue:
+    def __get_pydantic_json_schema__(cls, schema, model_schema) -> JsonSchemaValue:
+        """
+        Generates the JSON schema for OpenAPI.
+        """
         return {"type": "string", "pattern": "^[a-fA-F0-9]{24}$"}
 
+
+# Schema for the QuestionBody
 class QuestionBody(BaseModel):
     question: str = Field(..., description="The question to provide feedback for")
     answer: str = Field(..., description="The answer to the question by user")
@@ -32,10 +38,14 @@ class QuestionBody(BaseModel):
 
         return " | ".join(parts) if parts else "No Question Information Provided."
 
+
+# Schema for the Profile Data
 class ProfileData(BaseModel):
     cv: Optional[str] = None
     cover_letter: Optional[str] = None
 
+
+# Schema for the Interview Summary
 class InterviewSummary(BaseModel):
     job_title: str
     job_description: Optional[str] = None
@@ -43,10 +53,14 @@ class InterviewSummary(BaseModel):
     role_level: str
     interview_id: str
 
+
+# Schema for Feedback Content
 class QA_Feedback_Model_Content(BaseModel):
     rating: float
     feedback: str
 
+
+# Schema for Feedback Model
 class QA_Feedback_Model(BaseModel):
     content: Optional[QA_Feedback_Model_Content] = None
     coherence: Optional[QA_Feedback_Model_Content] = None
@@ -54,8 +68,10 @@ class QA_Feedback_Model(BaseModel):
     relevance: Optional[QA_Feedback_Model_Content] = None
     professionalism: Optional[QA_Feedback_Model_Content] = None
     appropriateness: Optional[QA_Feedback_Model_Content] = None
-    overal_summary: Optional[QA_Feedback_Model_Content] = None
+    overall_summary: Optional[QA_Feedback_Model_Content] = None
 
+
+# Schema for Follow-up QA
 class FollowupQA(BaseModel):
     question: str
     original_user_answer: Optional[str] = None
@@ -63,6 +79,8 @@ class FollowupQA(BaseModel):
     ideal_answer: Optional[str] = None
     ai_feedback: Optional[QA_Feedback_Model] = None
 
+
+# Schema for Question and Answer (QA)
 class QA(BaseModel):
     question: str
     original_user_answer: Optional[str] = None
@@ -71,6 +89,8 @@ class QA(BaseModel):
     ai_feedback: Optional[QA_Feedback_Model] = None
     followup_qas: Optional[List[FollowupQA]] = Field(default_factory=list)  # Now this is a list of FollowupQA
 
+
+# Base schema for Interview
 class InterviewBase(BaseModel):
     user: str
     job_title: Optional[str] = None  # Optional job title
@@ -115,6 +135,7 @@ class InterviewBase(BaseModel):
         raise ValueError(
             f'Invalid value for "role_level": {value}. Must be one of {allowed_role_levels}.'
         )
+
     def get_combined_job_info(self) -> str:
         """
         Combines the job title and job description into a single string.
@@ -141,13 +162,17 @@ class InterviewBase(BaseModel):
         
         return " | ".join(parts) if parts else "No Job Information Provided."
 
+
+# Schema for creating an Interview
 class InterviewCreate(InterviewBase):
     pass
 
+
+# Schema for Interview, using the custom PyObjectId
 class Interview(InterviewBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
 
     class Config:
         populate_by_name = True  # Updated from allow_population_by_field_name
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str, PyObjectId: str}  # Added PyObjectId
+        json_encoders = {ObjectId: str, PyObjectId: str}  # Added PyObjectId JSON encoder
