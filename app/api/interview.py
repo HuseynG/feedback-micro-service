@@ -85,7 +85,7 @@ async def generate_interview_feedback(
     db=Depends(get_database)
 ):
     """
-    Updates an existing interview by adding feedback to a specific question.
+    Updates an existing interview by adding feedback to a specific question or its follow-up questions.
     """
     if not ObjectId.is_valid(interview_id):
         raise HTTPException(status_code=400, detail="Invalid interview ID")
@@ -100,9 +100,10 @@ async def generate_interview_feedback(
     if user != interview.get('user'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
-    # Find the QA entry with the specified question
+    # Find the QA entry with the specified question or its follow-up
     qa_list = interview.get('QAs', [])
     qa_found = False
+    followup_found = False
     
     # Convert '_id' to PyObjectId
     temp_interview = copy.copy(interview)
@@ -110,23 +111,48 @@ async def generate_interview_feedback(
     
     # Initialize Pydantic model with corrected '_id'
     temp_interview = schemas.Interview(**temp_interview)
-    
+
+    # Iterate through each question (QA) in the list
     for qa in qa_list:
+        # Check if the provided question matches the main question
         if qa.get('question') == body.question:
+            qa_found = True
             
-            # call ai model
-            res = ai_generator.generate_q_feedback(
-                # preparing the necessary info for feedback generation.
+            # Generate feedback for the main question
+            main_feedback = ai_generator.generate_q_feedback(
                 temp_interview.get_combined_job_info() + "\n"*2  + body.get_combined_Q_info()
             )
-            logger.debug(res)
+            logger.debug(main_feedback)
+            
+            # Update the main question with feedback and AI-modified answer
             qa['original_user_answer'] = body.answer
-            qa['ai_feedback'] = res['ai_feedback']
-            qa['ai_modified_user_answer'] = res['ai_modified_user_answer']
-            qa_found = True
-            break
-    del temp_interview, 
-    if not qa_found:
+            qa['ai_feedback'] = main_feedback['ai_feedback']
+            qa['ai_modified_user_answer'] = main_feedback['ai_modified_user_answer']
+            
+            break  # We found the main question, so we can exit the loop
+
+        # If the main question doesn't match, check its follow-up questions
+        followup_qas = qa.get('followup_qas', [])  # Safely access followup_qas with .get()
+        for followup in followup_qas:
+            if followup.get('question') == body.question:
+                followup_found = True
+                
+                # Generate feedback for the follow-up question
+                followup_feedback = ai_generator.generate_q_feedback(
+                    temp_interview.get_combined_job_info() + "\n"*2  + body.get_combined_Q_info()
+                )
+                
+                # Update follow-up question with feedback and AI-modified answer
+                followup['original_user_answer'] = body.answer
+                followup['ai_feedback'] = followup_feedback['ai_feedback']
+                followup['ai_modified_user_answer'] = followup_feedback['ai_modified_user_answer']
+
+                break  # We found the follow-up question, so we can exit the inner loop
+
+        if followup_found:
+            break  # Exit the outer loop if we found a follow-up question
+
+    if not qa_found and not followup_found:
         raise HTTPException(status_code=404, detail="Question not found in the interview")
     
     # Update the interview document in the database
@@ -135,7 +161,7 @@ async def generate_interview_feedback(
         {"$set": {"QAs": qa_list}}
     )
     
-    if update_result.modified_count == 0:  # this when the key is not found or no change was made in the user response. No change in db anyways.
+    if update_result.modified_count == 0:
         raise HTTPException(status_code=500, detail="Failed to update the interview")
     
     # Fetch the updated interview document
@@ -147,10 +173,23 @@ async def generate_interview_feedback(
     # Convert '_id' from ObjectId to PyObjectId
     updated_interview['_id'] = schemas.PyObjectId(updated_interview['_id'])
         
-    qa_item = next((qa for qa in updated_interview["QAs"] if qa["question"] == body.question), None)
+    # Find the updated QA entry
+    qa_item = None
+    if qa_found:
+        qa_item = next((qa for qa in updated_interview["QAs"] if qa["question"] == body.question), None)
+    elif followup_found:
+        for qa in updated_interview["QAs"]:
+            followup_item = next((f for f in qa.get("followup_qas", []) if f["question"] == body.question), None)
+            if followup_item:
+                qa_item = followup_item
+                break
+
     if not qa_item:
         raise HTTPException(status_code=404, detail="Question not found in updated interview")
+    
     return schemas.QA(**qa_item)
+
+
 
 @router.put("/follow-up/{user}/{interview_id}", response_model=List[schemas.FollowupQA])
 async def generate_followup_questions(
