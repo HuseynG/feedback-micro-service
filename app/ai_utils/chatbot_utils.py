@@ -1,3 +1,4 @@
+# app/ai_utils/chatbot_utils.py
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,6 +23,7 @@ class QA_Feedback_Model(BaseModel):
     relevance: Optional[QA_Feedback_Model_Content] = Field(None, alias='relevance', description="Feedback on the relevance of the user answer.")
     professionalism: Optional[QA_Feedback_Model_Content] = Field(None, alias='professionalism', description="Feedback on the professionalism of the user's answer.")
     appropriateness: Optional[QA_Feedback_Model_Content] = Field(None, alias='appropriateness', description="Feedback on the appropriateness of the user's answer.")
+    # TODO: We need to make sure that the overall summary number is correct...
     overal_summary: Optional[QA_Feedback_Model_Content] = Field(None, alias='overal_summary', description="Overall Feedback on the user's answer.")
 
 # AI model response schemas
@@ -42,6 +44,11 @@ class QA(BaseModel):
 class InterviewQuestions(BaseModel): 
     qas: List[QA] = Field(
         ..., alias="qas", description="List of question-answer items."
+    )
+
+class InterviewFollowupQuestions(BaseModel): 
+    followup_qas: List[QA] = Field(
+        ..., alias="followup_qas", description="List of follow up question-answer items."
     )
 
 class AI_Generator:
@@ -103,6 +110,22 @@ class AI_Generator:
 
         structured_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(QA)
         response = structured_question_feedback_generator_model.invoke(convo)
+        response_json = json.loads(response.model_dump_json())  # converting to json/dict object type
+
+        return response_json
+    
+    def generate_follow_up_qs(self, text):
+
+        system_prompt = prompt_templates.follow_up_question_generator_model_system_prompt_template
+        user_prompt = prompt_templates.follow_up_question_generator_model_user_prompt_template
+
+        system_message = SystemMessage(content=system_prompt)
+        user_message = HumanMessage(content=user_prompt.format(text=text))
+
+        convo = [system_message, user_message]
+
+        structured_follow_up_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(InterviewFollowupQuestions)
+        response = structured_follow_up_question_feedback_generator_model.invoke(convo)
         response_json = json.loads(response.model_dump_json())  # converting to json/dict object type
 
         return response_json

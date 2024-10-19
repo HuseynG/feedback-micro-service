@@ -41,6 +41,7 @@ class InterviewSummary(BaseModel):
     job_description: Optional[str] = None
     question_type: str
     role_level: str
+    interview_id: str
 
 class QA_Feedback_Model_Content(BaseModel):
     rating: float
@@ -55,12 +56,20 @@ class QA_Feedback_Model(BaseModel):
     appropriateness: Optional[QA_Feedback_Model_Content] = None
     overal_summary: Optional[QA_Feedback_Model_Content] = None
 
+class FollowupQA(BaseModel):
+    question: str
+    original_user_answer: Optional[str] = None
+    ai_modified_user_answer: Optional[str] = None
+    ideal_answer: Optional[str] = None
+    ai_feedback: Optional[QA_Feedback_Model] = None
+
 class QA(BaseModel):
     question: str
     original_user_answer: Optional[str] = None
     ai_modified_user_answer: Optional[str] = None
     ideal_answer: Optional[str] = None
     ai_feedback: Optional[QA_Feedback_Model] = None
+    followup_qas: Optional[List[FollowupQA]] = Field(default_factory=list)  # Now this is a list of FollowupQA
 
 class InterviewBase(BaseModel):
     user: str
