@@ -5,11 +5,11 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    command: uvicorn main:app --host 0.0.0.0 --port 443 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 500 --reload
     volumes:
       - ./app:/app
     ports:
-      - "433:443"
+      - "500:500"
     # depends_on:
     #   - rabbitmq
     env_file:
