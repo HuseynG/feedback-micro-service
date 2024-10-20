@@ -8,9 +8,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Pull the latest changes from the 'dev' branch
-                git branch: 'dev',
-                    url: 'https://github.com/jobassist-micro-services/feedback-micro-service.git'
+                script {
+                    // Use Jenkins credentials to inject the GitHub PAT
+                    withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_PAT')]) {
+                        // Clone the repository using the token stored in GITHUB_PAT
+                        sh "git clone https://$GITHUB_PAT@github.com/jobassist-micro-services/feedback-micro-service.git"
+                    }
+                }
             }
         }
 
