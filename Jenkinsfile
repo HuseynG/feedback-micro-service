@@ -8,8 +8,9 @@ pipeline {
     stages {
         stage('Verify Docker') {
             steps {
-                // Check if Docker is installed
+                // Check if Docker is installed on the host machine
                 sh 'docker --version'
+                sh 'docker-compose --version'
             }
         }
 
@@ -30,10 +31,17 @@ pipeline {
                 script {
                     // Ensure Docker is running
                     sh 'docker --version'
-                    // Run Docker Compose to pull latest images and start the containers
-                    sh "docker-compose -f ${DOCKER_COMPOSE_PATH} down"  // Stop any existing containers
-                    sh "docker-compose -f ${DOCKER_COMPOSE_PATH} pull"  // Pull the latest images
-                    sh "docker-compose -f ${DOCKER_COMPOSE_PATH} up --build -d"  // Start the containers in detached mode
+                    sh 'docker-compose --version'
+                    
+                    // Navigate to the correct directory and run Docker Compose
+                    dir('feedback-micro-service') {
+                        // Stop any existing containers
+                        sh "docker-compose -f ${DOCKER_COMPOSE_PATH} down"
+                        // Pull the latest images
+                        sh "docker-compose -f ${DOCKER_COMPOSE_PATH} pull"
+                        // Start the containers in detached mode
+                        sh "docker-compose -f ${DOCKER_COMPOSE_PATH} up --build -d"
+                    }
                 }
             }
         }
