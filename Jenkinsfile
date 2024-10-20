@@ -5,14 +5,14 @@ pipeline {
         stage('Verify Docker') {
             steps {
                 // Check if Docker is accessible from the host machine
-                sh 'docker --version'
+                sh 'sudo docker --version'
             }
         }
 
         stage('List Docker Containers') {
             steps {
                 // List running Docker containers to ensure access to host Docker
-                sh 'docker ps'
+                sh 'sudo docker ps'
             }
         }
     }
