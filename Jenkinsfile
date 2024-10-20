@@ -6,6 +6,14 @@ pipeline {
     }
 
     stages {
+        stage('Verify Docker') {
+            steps {
+                sh 'docker --version'
+            }
+        }
+    }
+
+    stages {
         stage('Checkout') {
             steps {
                 script {
