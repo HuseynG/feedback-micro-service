@@ -11,9 +11,7 @@ pipeline {
                 sh 'docker --version'
             }
         }
-    }
 
-    stages {
         stage('Checkout') {
             steps {
                 script {
@@ -31,7 +29,7 @@ pipeline {
                 script {
                     // Ensure Docker is running
                     sh 'docker --version'
-                    // Run Docker Compose to pull latest images and start the containers
+                    // Run Docker Compose to pull the latest images and start the containers
                     sh "docker-compose -f ${DOCKER_COMPOSE_PATH} down"  // Stop any existing containers
                     sh "docker-compose -f ${DOCKER_COMPOSE_PATH} pull"  // Pull the latest images
                     sh "docker-compose -f ${DOCKER_COMPOSE_PATH} up --build -d"  // Start the containers in detached mode
