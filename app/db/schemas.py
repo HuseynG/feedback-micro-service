@@ -27,7 +27,7 @@ class PyObjectId(ObjectId):
 # Schema for the QuestionBody
 class QuestionBody(BaseModel):
     question: str = Field(..., description="The question to provide feedback for")
-    answer: str = Field(..., description="The answer to the question by user")
+    answer: str = Field(..., description="The answer to the question by user_id")
 
     def get_combined_Q_info(self) -> str:
         parts = []
@@ -92,7 +92,7 @@ class QA(BaseModel):
 
 # Base schema for Interview
 class InterviewBase(BaseModel):
-    user: str
+    user_id: str
     job_title: Optional[str] = None  # Optional job title
     job_description: Optional[str] = None  # Optional job description
     question_type: str  # Should be one of the allowed question types

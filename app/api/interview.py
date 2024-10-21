@@ -18,8 +18,8 @@ router = APIRouter(
 
 ai_generator = AI_Generator()
 
-@router.get("/list/{user}", response_model=List[schemas.InterviewSummary])
-async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Depends(get_database)):
+@router.get("/list/{user_id}", response_model=List[schemas.InterviewSummary])
+async def list_user_interviews(user_id: str, skip: int = 0, limit: int = 10, db=Depends(get_database)):
     """
     Retrieves a paginated list of interviews for a specific user, returning only key information.
     """
@@ -28,7 +28,7 @@ async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Dep
         raise HTTPException(status_code=400, detail="Pagination limit and skip must be greater than zero.")
     
     # Fetch interviews for the specified user
-    interviews = db.interviews.find({"user": user}, {
+    interviews = db.interviews.find({"user_id": user_id}, {
         "job_title": 1,
         "job_description": 1,
         "question_type": 1,
@@ -42,7 +42,7 @@ async def list_user_interviews(user: str, skip: int = 0, limit: int = 10, db=Dep
     
     # If no interviews found, return 404
     if not interviews_list:
-        raise HTTPException(status_code=404, detail="No interviews found for the user.")
+        raise HTTPException(status_code=404, detail="No interviews found for the user_id.")
     
     return interviews_list
 
@@ -72,8 +72,8 @@ async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_da
     interview_dict["_id"] = PyObjectId(result.inserted_id)  # Convert to PyObjectId
     return schemas.Interview(**interview_dict)
 
-@router.get("/get_interview/{user}/{interview_id}", response_model=schemas.Interview)
-async def get_interview(user: str, interview_id: str, db=Depends(get_database)):
+@router.get("/get_interview/{user_id}/{interview_id}", response_model=schemas.Interview)
+async def get_interview(user_id: str, interview_id: str, db=Depends(get_database)):
     """
     Retrieves an interview by its ID.
     """
@@ -88,16 +88,16 @@ async def get_interview(user: str, interview_id: str, db=Depends(get_database)):
         raise HTTPException(status_code=404, detail="Interview not found")
     
     # If the user does not have access to this interview
-    if user != interview['user']:
+    if user_id != interview['user_id']:
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
     interview['_id'] = schemas.PyObjectId(interview['_id'])
     
     return schemas.Interview(**interview)
 
-@router.put("/generate_interview_feedback/{user}/{interview_id}", response_model=schemas.QA)
+@router.put("/generate_interview_feedback/{user_id}/{interview_id}", response_model=schemas.QA)
 async def generate_interview_feedback(
-    user: str,
+    user_id: str,
     interview_id: str,
     body: schemas.QuestionBody,
     db=Depends(get_database)
@@ -116,7 +116,7 @@ async def generate_interview_feedback(
         raise HTTPException(status_code=404, detail="Interview not found")
     
     # Check if the user has access to this interview
-    if user != interview.get('user'):
+    if user_id != interview.get('user_id'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
     # Ensure 'QAs' exist in the interview
@@ -216,9 +216,9 @@ async def generate_interview_feedback(
     
     return schemas.QA(**qa_item)
 
-@router.put("/follow-up/{user}/{interview_id}", response_model=List[schemas.FollowupQA])
+@router.put("/follow-up/{user_id}/{interview_id}", response_model=List[schemas.FollowupQA])
 async def generate_followup_questions(
-    user: str,
+    user_id: str,
     interview_id: str,
     body: schemas.QuestionBody,
     db=Depends(get_database)
@@ -238,7 +238,7 @@ async def generate_followup_questions(
         raise HTTPException(status_code=404, detail="Interview not found")
     
     # If the user does not have access to this interview
-    if user != interview.get('user'):
+    if user_id != interview.get('user_id'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
     # Find the QA entry with the specified question
