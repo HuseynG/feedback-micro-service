@@ -13,8 +13,8 @@ from typing import List, Optional
 
 
 class QA_Feedback_Model_Content(BaseModel):
-    rating: float = Field(None, alias="rating", description="The rating is between 1-10. 1 being lowest and 10 being highest rating") # 1-10
-    feedback: str = Field(None, alias="feedback", description="The interview question.") # str
+    rating: Optional[float] = Field(None, alias="rating", description="The rating is between 1-10.")
+    feedback: Optional[str] = Field(None, alias="feedback", description="Feedback message.")
 
 class QA_Feedback_Model(BaseModel):
     content: Optional[QA_Feedback_Model_Content] = Field(None, alias="content", description="Feedback on the content of the user answer.")
@@ -23,8 +23,7 @@ class QA_Feedback_Model(BaseModel):
     relevance: Optional[QA_Feedback_Model_Content] = Field(None, alias='relevance', description="Feedback on the relevance of the user answer.")
     professionalism: Optional[QA_Feedback_Model_Content] = Field(None, alias='professionalism', description="Feedback on the professionalism of the user's answer.")
     appropriateness: Optional[QA_Feedback_Model_Content] = Field(None, alias='appropriateness', description="Feedback on the appropriateness of the user's answer.")
-    # TODO: We need to make sure that the overall summary number is correct...
-    overal_summary: Optional[QA_Feedback_Model_Content] = Field(None, alias='overal_summary', description="Overall Feedback on the user's answer.")
+    overall_summary: Optional[QA_Feedback_Model_Content] = Field(None, alias='overall_summary', description="Overall Feedback on the user's answer.")
 
 # AI model response schemas
 class QA(BaseModel):
@@ -50,6 +49,35 @@ class InterviewFollowupQuestions(BaseModel):
     followup_qas: List[QA] = Field(
         ..., alias="followup_qas", description="List of follow up question-answer items."
     )
+
+def calculate_overall_summary(feedback_model: QA_Feedback_Model):
+    if not feedback_model:
+        # Initialize feedback_model if it's None
+        feedback_model = QA_Feedback_Model()
+        feedback_model.overall_summary = QA_Feedback_Model_Content(
+            rating=None,
+            feedback="No feedback provided."
+        )
+        return
+
+    ratings = []
+    attributes = ['content', 'coherence', 'confidence', 'relevance', 'professionalism', 'appropriateness']
+    for attr in attributes:
+        attr_value = getattr(feedback_model, attr, None)
+        if attr_value and attr_value.rating is not None:
+            ratings.append(attr_value.rating)
+
+    if ratings:
+        average_rating = sum(ratings) / len(ratings)
+        feedback_model.overall_summary = QA_Feedback_Model_Content(
+            rating=round(average_rating, 2),
+            feedback="Overall summary calculated as the average of individual ratings."
+        )
+    else:
+        feedback_model.overall_summary = QA_Feedback_Model_Content(
+            rating=None,
+            feedback="No ratings available to calculate an overall summary."
+        )
 
 class AI_Generator:
     def __init__(self):
@@ -94,7 +122,7 @@ class AI_Generator:
 
         structured_question_generator_model = self.question_generator_model.with_structured_output(InterviewQuestions)
         response = structured_question_generator_model.invoke(convo)
-        response_json = json.loads(response.model_dump_json())  # converting to json/dict object type
+        response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
 
         return response_json
     
@@ -110,9 +138,27 @@ class AI_Generator:
 
         structured_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(QA)
         response = structured_question_feedback_generator_model.invoke(convo)
-        response_json = json.loads(response.model_dump_json())  # converting to json/dict object type
+        
+        # Log the raw AI response for debugging
+        print("AI Model Response:", response)
 
-        return response_json
+        # Parse the response into a QA object
+        qa_instance = QA.model_validate(response.dict())
+
+        # Check if ai_feedback is not None
+        if qa_instance.ai_feedback:
+            # Calculate the overall summary
+            calculate_overall_summary(qa_instance.ai_feedback)
+        else:
+            # Initialize ai_feedback and set overall_summary
+            qa_instance.ai_feedback = QA_Feedback_Model()
+            qa_instance.ai_feedback.overall_summary = QA_Feedback_Model_Content(
+                rating=None,
+                feedback="No feedback provided."
+            )
+
+        # Return the QA object as a dictionary
+        return qa_instance.model_dump()
     
     def generate_follow_up_qs(self, text):
 
@@ -126,6 +172,6 @@ class AI_Generator:
 
         structured_follow_up_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(InterviewFollowupQuestions)
         response = structured_follow_up_question_feedback_generator_model.invoke(convo)
-        response_json = json.loads(response.model_dump_json())  # converting to json/dict object type
+        response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
 
         return response_json
