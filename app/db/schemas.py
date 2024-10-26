@@ -3,6 +3,7 @@ from typing import Optional, List, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 from bson import ObjectId
 from pydantic.json_schema import JsonSchemaValue
+from log.logging_config import logger
 
 
 # Define a custom ObjectId class for use with Pydantic

@@ -10,6 +10,7 @@ import ai_utils.prompt_templates as prompt_templates
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from log.logging_config import logger
 
 
 class QA_Feedback_Model_Content(BaseModel):
@@ -139,9 +140,6 @@ class AI_Generator:
         structured_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(QA)
         response = structured_question_feedback_generator_model.invoke(convo)
         
-        # Log the raw AI response for debugging
-        print("AI Model Response:", response)
-
         # Parse the response into a QA object
         qa_instance = QA.model_validate(response.dict())
 
@@ -161,7 +159,7 @@ class AI_Generator:
         return qa_instance.model_dump()
     
     def generate_follow_up_qs(self, text):
-
+        # logger.debug(f"{text}")
         system_prompt = prompt_templates.follow_up_question_generator_model_system_prompt_template
         user_prompt = prompt_templates.follow_up_question_generator_model_user_prompt_template
 
@@ -170,8 +168,8 @@ class AI_Generator:
 
         convo = [system_message, user_message]
 
-        structured_follow_up_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(InterviewFollowupQuestions)
-        response = structured_follow_up_question_feedback_generator_model.invoke(convo)
+        structured_follow_up_question_generator_model = self.question_generator_model.with_structured_output(InterviewFollowupQuestions)
+        response = structured_follow_up_question_generator_model.invoke(convo)
         response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
-
+        # logger.debug(f"{response_json}")
         return response_json

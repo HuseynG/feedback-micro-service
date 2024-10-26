@@ -145,9 +145,9 @@ async def generate_interview_feedback(
         if qa.get('question') == body.question:
             qa_found = True
             
-            # Generate feedback for the main question
+            # Generate feedback for the main question            
             main_feedback = ai_generator.generate_q_feedback(
-                temp_interview.get_combined_job_info() + "\n"*2  + body.get_combined_Q_info()
+                temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
             )
             logger.debug(main_feedback)
             
@@ -166,7 +166,7 @@ async def generate_interview_feedback(
                 
                 # Generate feedback for the follow-up question
                 followup_feedback = ai_generator.generate_q_feedback(
-                    temp_interview.get_combined_job_info() + "\n"*2  + body.get_combined_Q_info()
+                    temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
                 )
                 
                 # Update follow-up question with feedback and AI-modified answer
@@ -278,9 +278,8 @@ async def generate_followup_questions(
             
             # Generate follow-up questions if the count is less than 25
             res = ai_generator.generate_follow_up_qs(
-                temp_interview.get_combined_job_info() + "\n" * 2 + body.get_combined_Q_info()
+                temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
             )
-            logger.debug(f"res: {res}")
             
             # Collect existing follow-up questions to ensure uniqueness
             existing_questions = {f['question'] for f in existing_followups}
