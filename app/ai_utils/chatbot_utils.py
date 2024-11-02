@@ -14,17 +14,45 @@ from log.logging_config import logger
 
 
 class QA_Feedback_Model_Content(BaseModel):
-    rating: Optional[float] = Field(None, alias="rating", description="The rating is between 1-10.")
-    feedback: Optional[str] = Field(None, alias="feedback", description="Feedback message.")
+    rating: float = Field(default=0.0, alias="rating", description="The rating is between 1-10.")
+    feedback: str = Field(default="No feedback provided", alias="feedback", description="Feedback message.")
 
 class QA_Feedback_Model(BaseModel):
-    content: Optional[QA_Feedback_Model_Content] = Field(None, alias="content", description="Feedback on the content of the user answer.")
-    coherence: Optional[QA_Feedback_Model_Content] = Field(None, alias="coherence", description="Feedback on the coherence of the user answer.")
-    confidence: Optional[QA_Feedback_Model_Content] = Field(None, alias="confidence", description="Feedback on the confidence of the user based on the answer.")
-    relevance: Optional[QA_Feedback_Model_Content] = Field(None, alias='relevance', description="Feedback on the relevance of the user answer.")
-    professionalism: Optional[QA_Feedback_Model_Content] = Field(None, alias='professionalism', description="Feedback on the professionalism of the user's answer.")
-    appropriateness: Optional[QA_Feedback_Model_Content] = Field(None, alias='appropriateness', description="Feedback on the appropriateness of the user's answer.")
-    overall_summary: Optional[QA_Feedback_Model_Content] = Field(None, alias='overall_summary', description="Overall Feedback on the user's answer.")
+    content: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias="content",
+        description="Feedback on the content of the user answer."
+    )
+    coherence: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias="coherence",
+        description="Feedback on the coherence of the user answer."
+    )
+    confidence: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias="confidence",
+        description="Feedback on the confidence of the user based on the answer."
+    )
+    relevance: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias='relevance',
+        description="Feedback on the relevance of the user answer."
+    )
+    professionalism: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias='professionalism',
+        description="Feedback on the professionalism of the user's answer."
+    )
+    appropriateness: QA_Feedback_Model_Content = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias='appropriateness',
+        description="Feedback on the appropriateness of the user's answer."
+    )
+    overall_summary: Optional[QA_Feedback_Model_Content] = Field(
+        default_factory=lambda: QA_Feedback_Model_Content(),
+        alias='overall_summary',
+        description="Overall Feedback on the user's answer."
+    )
 
 # AI model response schemas
 class QA(BaseModel):
@@ -150,7 +178,7 @@ class AI_Generator:
             # Initialize ai_feedback and set overall_summary
             qa_instance.ai_feedback = QA_Feedback_Model()
             qa_instance.ai_feedback.overall_summary = QA_Feedback_Model_Content(
-                rating=None,
+                rating=0.0,
                 feedback="No feedback provided."
             )
 
