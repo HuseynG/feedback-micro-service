@@ -53,10 +53,9 @@ class InterviewFollowupQuestions(BaseModel):
 
 def calculate_overall_summary(feedback_model: QA_Feedback_Model):
     if not feedback_model:
-        # Initialize feedback_model if it's None
         feedback_model = QA_Feedback_Model()
         feedback_model.overall_summary = QA_Feedback_Model_Content(
-            rating=None,
+            rating=0.0,
             feedback="No feedback provided."
         )
         return
@@ -76,7 +75,7 @@ def calculate_overall_summary(feedback_model: QA_Feedback_Model):
         )
     else:
         feedback_model.overall_summary = QA_Feedback_Model_Content(
-            rating=None,
+            rating=0.0,
             feedback="No ratings available to calculate an overall summary."
         )
 
