@@ -11,3 +11,6 @@ pymongo[bson]
 colorlog
 langchain
 langchain_openai
+langchain-community
+requests
+duckduckgo-search
