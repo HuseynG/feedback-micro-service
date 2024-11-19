@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
-from api import interview  # Import your interview router
+from api import router  # Import the main router from api/__init__.py
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
@@ -25,7 +25,6 @@ async def lifespan(app: FastAPI):
     app.database = app.mongodb_client[mongodb_db_name]
     print(f"Connected to MongoDB database: {mongodb_db_name}")
     
-    # This yield lets the app run while the connection is active
     yield
     
     # Shutdown logic
@@ -35,5 +34,5 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app with the lifespan protocol
 app = FastAPI(title="Modular FastAPI Application", lifespan=lifespan, dependencies=[Depends(verify_api_key)])
 
-# Include API routers
-app.include_router(interview.router)
+# Include the main router that contains all other routers
+app.include_router(router)
