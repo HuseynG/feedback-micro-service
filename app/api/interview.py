@@ -21,7 +21,26 @@ ai_generator = AI_Generator()
 @router.get("/list/{user_id}", response_model=List[schemas.InterviewSummary])
 async def list_user_interviews(user_id: str, skip: int = 0, limit: int = 10, db=Depends(get_database)):
     """
-    Retrieves a paginated list of interviews for a specific user, returning only key information.
+    **Retrieve a paginated list of interviews for a specific user.**\n
+    \n
+    **Parameters:**\n
+        - **user_id**: The unique identifier of the user\n
+        - **skip**: Number of records to skip for pagination (default: 0)\n
+        - **limit**: Maximum number of records to return (default: 10)\n
+    \n
+    **Returns:**\n
+        List of interview summaries containing:\n
+        {\n
+            **"interview_id"**: str,  # Unique identifier of the interview\n
+            **"job_title"**: str,     # Title of the job\n
+            **"job_description"**: str,  # Description of the job\n
+            **"question_type"**: str,    # Type of interview questions\n
+            **"role_level"**: str        # Level of the role\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If pagination parameters are invalid\n
+        - **HTTPException (404)**: If no interviews are found for the user\n
     """
     # Ensure valid pagination limit
     if limit <= 0 or skip < 0:
@@ -49,7 +68,31 @@ async def list_user_interviews(user_id: str, skip: int = 0, limit: int = 10, db=
 @router.post("/generate-question", response_model=schemas.Interview)
 async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_database)):
     """
-    Creates a new interview entry in MongoDB.
+    **Create a new interview with AI-generated questions based on job details.**\n
+    \n
+    **Parameters:**\n
+        Interview creation object containing:\n
+        {\n
+            **"user_id"**: str,          # ID of the user\n
+            **"job_title"**: str,        # Title of the job position\n
+            **"job_description"**: str,   # Description of the job\n
+            **"question_type"**: str,     # Type of questions to generate\n
+            **"role_level"**: str         # Level of the role\n
+        }\n
+    \n
+    **Returns:**\n
+        Created interview object containing:\n
+        {\n
+            **"interview_id"**: str,      # Unique identifier\n
+            **"user_id"**: str,           # ID of the user\n
+            **"job_title"**: str,         # Title of the job\n
+            **"job_description"**: str,   # Description of the job\n
+            **"QAs"**: List[dict]         # List of generated questions and answers\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If required fields are missing\n
+        - **HTTPException (500)**: If question generation fails\n
     """
     # Ensure all required fields are present in the schema
     if not interview.job_title and not interview.job_description:
@@ -75,7 +118,26 @@ async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_da
 @router.get("/get_interview/{user_id}/{interview_id}", response_model=schemas.Interview)
 async def get_interview(user_id: str, interview_id: str, db=Depends(get_database)):
     """
-    Retrieves an interview by its ID.
+    **Retrieve a specific interview by its ID.**\n
+    \n
+    **Parameters:**\n
+        - **user_id**: ID of the user requesting the interview\n
+        - **interview_id**: Unique identifier of the interview to retrieve\n
+    \n
+    **Returns:**\n
+        Complete interview object containing:\n
+        {\n
+            **"interview_id"**: str,      # Unique identifier of the interview\n
+            **"user_id"**: str,           # ID of the user\n
+            **"job_title"**: str,         # Title of the job\n
+            **"job_description"**: str,   # Description of the job\n
+            **"QAs"**: List[dict]         # List of questions and answers\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If interview_id is invalid\n
+        - **HTTPException (403)**: If user doesn't have access to the interview\n
+        - **HTTPException (404)**: If interview is not found\n
     """
     # Validate interview_id
     if not ObjectId.is_valid(interview_id):
@@ -96,14 +158,33 @@ async def get_interview(user_id: str, interview_id: str, db=Depends(get_database
     return schemas.Interview(**interview)
 
 @router.put("/generate_interview_feedback/{user_id}/{interview_id}", response_model=schemas.QA)
-async def generate_interview_feedback(
-    user_id: str,
-    interview_id: str,
-    body: schemas.QuestionBody,
-    db=Depends(get_database)
-):
+async def generate_interview_feedback(user_id: str, interview_id: str, body: schemas.QuestionBody, db=Depends(get_database)):
     """
-    Updates an existing interview by adding feedback to a specific question or its follow-up questions.
+    **Generate AI feedback for a user's interview answer.**\n
+    \n
+    **Parameters:**\n
+        - **user_id**: ID of the user requesting feedback\n
+        - **interview_id**: ID of the interview\n
+        - **body**: Feedback request containing:\n
+            {\n
+                **"question"**: str,  # Question for which feedback is requested\n
+                **"answer"**: str     # User's answer to the question\n
+            }\n
+    \n
+    **Returns:**\n
+        Updated question and answer object:\n
+        {\n
+            **"question"**: str,                 # Original question\n
+            **"original_user_answer"**: str,     # User's provided answer\n
+            **"ai_feedback"**: str,              # AI-generated feedback\n
+            **"ai_modified_user_answer"**: str   # AI-modified user answer\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If interview_id is invalid\n
+        - **HTTPException (403)**: If user doesn't have access\n
+        - **HTTPException (404)**: If interview or question not found\n
+        - **HTTPException (500)**: If feedback generation fails\n
     """
     # Validate interview_id
     if not ObjectId.is_valid(interview_id):
@@ -217,14 +298,34 @@ async def generate_interview_feedback(
     return schemas.QA(**qa_item)
 
 @router.put("/follow-up/{user_id}/{interview_id}", response_model=List[schemas.FollowupQA])
-async def generate_followup_questions(
-    user_id: str,
-    interview_id: str,
-    body: schemas.QuestionBody,
-    db=Depends(get_database)
-):
+async def generate_followup_questions(user_id: str, interview_id: str, body: schemas.QuestionBody, db=Depends(get_database)):
     """
-    Updates an existing interview by adding follow-up to a specific question and returns follow-up questions.
+    **Generate follow-up questions for a specific interview question.**\n
+    \n
+    **Parameters:**\n
+        - **user_id**: ID of the user requesting follow-ups\n
+        - **interview_id**: ID of the interview\n
+        - **body**: Request containing:\n
+            {\n
+                **"question"**: str  # Question for which follow-ups are requested\n
+            }\n
+    \n
+    **Returns:**\n
+        List of follow-up questions:\n
+        [\n
+            {\n
+                **"question"**: str,                 # Follow-up question\n
+                **"original_user_answer"**: str,     # User's answer\n
+                **"ideal_answer"**: str,             # Ideal answer\n
+                **"ai_feedback"**: str,              # AI-generated feedback\n
+                **"ai_modified_user_answer"**: str   # AI-modified answer\n
+            }\n
+        ]\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If interview_id is invalid\n
+        - **HTTPException (403)**: If user doesn't have access\n
+        - **HTTPException (404)**: If interview or question not found\n
     """
     # Validate interview_id
     if not ObjectId.is_valid(interview_id):
@@ -323,7 +424,19 @@ async def generate_followup_questions(
 @router.delete("/delete-interview/{user}/{interview_id}")
 async def delete_interview(interview_id: str, db=Depends(get_database)):
     """
-    Deletes an interview from MongoDB.
+    **Delete an interview from the database.**\n
+    \n
+    **Parameters:**\n
+        - **interview_id**: Unique identifier of the interview to delete\n
+    \n
+    **Returns:**\n
+        {\n
+            **"message"**: "Interview deleted successfully"\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (400)**: If interview_id is invalid\n
+        - **HTTPException (404)**: If interview is not found\n
     """
     if not ObjectId.is_valid(interview_id):
         raise HTTPException(status_code=400, detail="Invalid interview ID")
