@@ -14,3 +14,5 @@ langchain_openai
 langchain-community
 requests
 duckduckgo-search
+langgraph==0.1.5
+bs4

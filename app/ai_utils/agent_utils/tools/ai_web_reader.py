@@ -3,10 +3,12 @@ import asyncio
 from dotenv import load_dotenv
 import os
 import time
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Any
 from dataclasses import dataclass
 from langchain.tools import BaseTool
 import json
+from bs4 import BeautifulSoup
+import requests
 
 load_dotenv()
 
@@ -104,6 +106,49 @@ def print_results(results: List[WebPageResult]) -> None:
         print("\nFailed URLs:")
         for result in failed:
             print(f"- {result.url}: {result.error}")
+
+def read_webpage(url: str) -> Dict[str, Any]:
+    """
+    Read and extract content from a webpage.
+    
+    Args:
+        url (str): URL of the webpage to read
+        
+    Returns:
+        Dict[str, Any]: Dictionary containing extracted content
+    """
+    try:
+        # Send GET request to the URL
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        # Parse HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+            
+        # Extract text content
+        text = soup.get_text()
+        
+        # Clean up text
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return {
+            'url': url,
+            'content': text,
+            'status': 'success'
+        }
+        
+    except Exception as e:
+        return {
+            'url': url,
+            'error': str(e),
+            'status': 'error'
+        }
 
 class JinaAIWebReaderTool(BaseTool):
     name: str = "jina_web_reader"

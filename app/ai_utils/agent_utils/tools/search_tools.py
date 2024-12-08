@@ -238,6 +238,36 @@ class DuckDuckGoSearchTool(BaseTool):
         """Async implementation of the search."""
         return self._run(query)
 
+def web_search(query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    """
+    Search the web using DuckDuckGo.
+    
+    Args:
+        query (str): The search query
+        max_results (int): Maximum number of results to return
+        
+    Returns:
+        List[Dict[str, str]]: List of search results with title and link
+    """
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(
+                query,
+                max_results=max_results
+            ))
+            
+            formatted_results = []
+            for result in results:
+                formatted_results.append({
+                    'title': result.get('title', ''),
+                    'link': result.get('link', ''),
+                    'snippet': result.get('body', '')
+                })
+            
+            return formatted_results
+    except Exception as e:
+        return [{"error": f"Search failed: {str(e)}"}]
+
 if __name__ == "__main__":
     start_time = time.time()
     

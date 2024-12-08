@@ -6,6 +6,10 @@ from typing import Optional, List
 from fastapi import HTTPException
 from datetime import datetime
 from .insight_schema import CompanyOverview, CompanyNewsList, CompanyReviewList, CompanyNews, CompanyReview
+from ai_utils.agent_utils.agent.workflow import create_overview_workflow
+from ai_utils.company_insights_utils import CompanyInsightsGenerator
+from ai_utils.agent_utils.utils.async_utils import process_query
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -25,21 +29,29 @@ router = APIRouter(
 
 @router.get("/overview/{company_name}", response_model=CompanyOverview)
 async def get_company_overview(company_name: str):
-    """Get company overview information"""
-    # Dummy data for demonstration
-    return CompanyOverview(
-        company_name="Example Tech Corp",
-        website_url="https://example.com",
-        values=["Innovation", "Integrity", "Customer Focus"],
-        vision="To revolutionize technology for a better tomorrow",
-        size="1000-5000 employees",
-        location="San Francisco, CA",
-        mission="To provide cutting-edge solutions that empower businesses",
-        ceo="John Smith",
-        company_type="Corporation",
-        business_nature="Technology and Software Development",
-        history="Founded in 2010, Example Tech Corp has grown from a small startup to a leading technology provider..."
-    )
+    """Get company overview information using AI agent"""
+    try:
+        # Initialize the workflow and generator
+        overview_graph, overview_llm = create_overview_workflow()
+        insights_generator = CompanyInsightsGenerator()
+        
+        # Create query for the agent
+        overview_query = f"{company_name} company information, including details about their website, values, vision, size, location, mission, leadership, company type, business nature, and history"
+        
+        # Create semaphore for rate limiting
+        semaphore = asyncio.Semaphore(100)
+        
+        # Get raw agent output
+        raw_overview = await process_query(overview_graph, overview_query, overview_llm, semaphore)
+        
+        # Structure the output according to our schema
+        structured_overview = await insights_generator.structure_company_overview(raw_overview)
+        
+        return structured_overview
+        
+    except Exception as e:
+        logger.error(f"Error getting company overview: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")
 
 @router.get("/news/{company_name}", response_model=CompanyNewsList)
 async def get_company_news(company_name: str):
