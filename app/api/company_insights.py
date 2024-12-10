@@ -10,6 +10,7 @@ from ai_utils.agent_utils.agent.workflow import create_overview_workflow
 from ai_utils.company_insights_utils import CompanyInsightsGenerator
 from ai_utils.agent_utils.utils.async_utils import process_query
 import asyncio
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -27,27 +28,22 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-@router.get("/overview/{company_name}", response_model=CompanyOverview)
+@router.get("/overview/{company_name}")
 async def get_company_overview(company_name: str):
     """Get company overview information using AI agent"""
     try:
-        # Initialize the workflow and generator
-        overview_graph, overview_llm = create_overview_workflow()
-        insights_generator = CompanyInsightsGenerator()
-        
-        # Create query for the agent
-        overview_query = f"{company_name} company information, including details about their website, values, vision, size, location, mission, leadership, company type, business nature, and history"
-        
-        # Create semaphore for rate limiting
-        semaphore = asyncio.Semaphore(100)
-        
-        # Get raw agent output
-        raw_overview = await process_query(overview_graph, overview_query, overview_llm, semaphore)
-        
-        # Structure the output according to our schema
-        structured_overview = await insights_generator.structure_company_overview(raw_overview)
-        
-        return structured_overview
+        url = "https://linkedin-data-api.p.rapidapi.com/get-company-insights"
+
+        querystring = {"username":company_name}
+
+        headers = {
+            "x-rapidapi-key": os.getenv("RAPIDAPI_KEY"),
+            "x-rapidapi-host": "linkedin-data-api.p.rapidapi.com"
+        }
+
+        response = requests.get(url, headers=headers, params=querystring)
+
+        return response.json()
         
     except Exception as e:
         logger.error(f"Error getting company overview: {str(e)}")
@@ -77,29 +73,32 @@ async def get_company_news(company_name: str):
         ]
     )
 
-@router.get("/reviews/{company_name}", response_model=CompanyReviewList)
+@router.get("/reviews/{company_name}",)
 async def get_company_reviews(company_name: str):
     """Get company reviews from various sources"""
-    # Dummy data for demonstration
-    return CompanyReviewList(
-        reviews=[
-            CompanyReview(
-                review="Great company culture and work-life balance",
-                source="Glassdoor",
-                source_url="https://glassdoor.com/example",
-                rating=4.5
-            ),
-            CompanyReview(
-                review="Innovative products and strong leadership",
-                source="Indeed",
-                source_url="https://indeed.com/example",
-                rating=4.2
-            ),
-            CompanyReview(
-                review="Excellent customer service and support",
-                source="Trustpilot",
-                source_url="https://trustpilot.com/example",
-                rating=4.8
-            )
-        ]
-    )
+    
+    url = "https://real-time-glassdoor-data.p.rapidapi.com/company-search"
+
+    querystring = {"query":company_name,"limit":"10"}
+
+    headers = {
+        "x-rapidapi-key": os.getenv("RAPIDAPI_KEY"),
+        "x-rapidapi-host": "real-time-glassdoor-data.p.rapidapi.com"
+    }
+
+    response = requests.get(url, headers=headers, params=querystring)
+
+    company_id = response.json()['data'][0]['company_id']
+    
+    url = "https://real-time-glassdoor-data.p.rapidapi.com/company-reviews"
+
+    querystring = {"company_id":company_id,"page":"1","sort":"POPULAR","language":"en","only_current_employees":"false","extended_rating_data":"false"}
+
+    headers = {
+        "x-rapidapi-key": os.getenv("RAPIDAPI_KEY"),
+        "x-rapidapi-host": "real-time-glassdoor-data.p.rapidapi.com"
+    }
+
+    response = requests.get(url, headers=headers, params=querystring)
+
+    return response.json()
