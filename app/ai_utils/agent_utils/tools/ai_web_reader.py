@@ -190,9 +190,9 @@ if __name__ == "__main__":
     # Example usage with multiple URLs
     search_query = "apple"
     test_urls = [
-        f"https://www.bing.com/jobs?q={search_query}",
+        # f"https://www.bing.com/jobs?q={search_query}",
         # f"https://www.google.com/search?q={search_query}%20jobs&jbr=sep:0&udm=8"
-        # f"https://www.bing.com/news/search?q={search_query}",
+        f"https://www.bing.com/news/search?q={search_query}",
         # f"https://www.bing.com/search?q={search_query}"
         # "https://www.google.com",
         # "https://www.github.com",
