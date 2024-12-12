@@ -12,6 +12,8 @@ from ai_utils.agent_utils.utils.async_utils import process_query
 import asyncio
 import requests
 import pickle
+from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
+from ai_utils.chatbot_utils import AI_Generator
 
 # Configure logging
 logging.basicConfig(
@@ -22,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+ai_generator = AI_Generator()
 
 router = APIRouter(
     prefix="/company_insights",
@@ -57,26 +61,21 @@ async def get_company_overview(company_name: str):
 @router.get("/news/{company_name}", response_model=CompanyNewsList)
 async def get_company_news(company_name: str):
     """Get company news articles"""
+
+    news_url = f"https://www.bing.com/news/search?q={company_name}"
+        # Fetch news content
+    results = await read_webpages([news_url])
+    if not results[0].success:
+        raise HTTPException(status_code=500, detail="Failed to fetch news")
+    
+    news_content = "".join(r.content for r in results)
+    
+    content_organiser_response = ai_generator.organise_with_schema(news_content, CompanyNewsList)
+
+    logger.debug(f"Getting company news for {content_organiser_response}")
+    
     # Dummy data for demonstration
-    return CompanyNewsList(
-        news=[
-            CompanyNews(
-                title="Example Tech Corp Launches New Product",
-                post_date=datetime.now(),
-                url="https://example.com/news/1"
-            ),
-            CompanyNews(
-                title="Company Expands to European Market",
-                post_date=datetime.now(),
-                url="https://example.com/news/2"
-            ),
-            CompanyNews(
-                title="Q3 Financial Results Exceed Expectations",
-                post_date=datetime.now(),
-                url="https://example.com/news/3"
-            )
-        ]
-    )
+    return content_organiser_response
 
 @router.get("/reviews/{company_name}",)
 async def get_company_reviews(company_name: str):

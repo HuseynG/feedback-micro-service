@@ -9,7 +9,7 @@ from langchain.schema import HumanMessage, SystemMessage
 import ai_utils.prompt_templates as prompt_templates
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Type
 from log.logging_config import logger
 
 
@@ -199,4 +199,31 @@ class AI_Generator:
         response = structured_follow_up_question_generator_model.invoke(convo)
         response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
         # logger.debug(f"{response_json}")
+        return response_json
+
+    def organise_with_schema(self, text: str, output_schema: Type[BaseModel]) -> BaseModel:
+        """
+        Generate response using specified Pydantic schema
+        
+        Args:
+            text (str): Input text
+            output_schema (Type[BaseModel]): Pydantic model class
+        
+        Returns:
+            BaseModel: Response formatted according to schema
+        
+        Raises:
+            TypeError: If output_schema is not a subclass of BaseModel
+        """
+        if not issubclass(output_schema, BaseModel):
+            raise TypeError("output_schema must be a Pydantic BaseModel")
+        
+        system_message = SystemMessage(content="You are a helpful assistant. You need to provide the response in the format of the schema provided. (JSON)")
+        user_message = HumanMessage(content=text)
+        
+        convo = [system_message, user_message]
+        
+        structured_model = self.question_generator_model.with_structured_output(output_schema)
+        response = structured_model.invoke(convo)
+        response_json = json.loads(response.model_dump_json())
         return response_json
