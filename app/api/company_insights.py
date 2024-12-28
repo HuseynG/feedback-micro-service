@@ -92,17 +92,17 @@ async def fetch_company_overview(company_name: str):
 
 async def get_company_insights_(company_name: str):
     # Gather all data concurrently
-    # overview_task = fetch_company_overview(company_name)
-    # news_task = fetch_company_news(company_name)
-    # reviews_task = fetch_company_reviews(company_name)
+    overview_task = fetch_company_overview(company_name)
+    news_task = fetch_company_news(company_name)
+    reviews_task = fetch_company_reviews(company_name)
     
     # # Wait for all tasks to complete
-    # overview_content, news_content, reviews_content = await asyncio.gather(
-    #     overview_task,
-    #     news_task,
-    #     reviews_task,
-    #     return_exceptions=True
-    # )
+    overview_content, news_content, reviews_content = await asyncio.gather(
+        overview_task,
+        news_task,
+        reviews_task,
+        return_exceptions=True
+    )
     
     # # Handle any exceptions and create the response
     # if isinstance(overview_content, Exception):
@@ -112,19 +112,11 @@ async def get_company_insights_(company_name: str):
     # if isinstance(reviews_content, Exception):
     #     raise HTTPException(status_code=500, detail="Failed to fetch reviews")
     
-    # res =  {
-    #     "overview": overview_content,
-    #     "news": news_content,
-    #     "reviews": reviews_content
-    # } 
-
-    # # Save the response to a file
-    # with open("company_insights.pkl", "wb") as file:
-    #     pickle.dump(res, file)
-
-    # Load the response from the file
-    with open("company_insights.pkl", "rb") as file:
-        res = pickle.load(file)
+    res =  str({
+        "overview": overview_content,
+        "news": news_content,
+        "reviews": reviews_content
+    })
 
     return company_insights_generator.structure_company_insights(res)
 

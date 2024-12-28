@@ -52,22 +52,21 @@ class CompanyInsightsGenerator:
                 "history": str
             },
             "news": {
-                "articles": [
+                "news": [
                     {
                         "title": str,
-                        "date": str,
-                        "summary": str,
-                        "source": str
+                        "post_date": str,
+                        "url": str
                     }
                 ]
             },
             "reviews": {
                 "reviews": [
                     {
-                        "rating": float,
-                        "text": str,
-                        "date": str,
-                        "source": str
+                        "review": str,
+                        "source": str,
+                        "source_url": str,
+                        "rating": float
                     }
                 ]
             }
@@ -106,10 +105,10 @@ class CompanyInsightsGenerator:
                     history="Information not available"
                 ),
                 news=CompanyNewsList(
-                    articles=[]  # Empty list for news articles
+                    news=[]
                 ),
                 reviews=CompanyReviewList(
-                    reviews=[]  # Empty list for reviews
+                    reviews=[]
                 )
             )
 
