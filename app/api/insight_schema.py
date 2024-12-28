@@ -31,3 +31,8 @@ class CompanyNewsList(BaseModel):
 
 class CompanyReviewList(BaseModel):
     reviews: List[CompanyReview] = Field(description="List of company reviews")
+
+class CompanyInsights(BaseModel):
+    overview: CompanyOverview = Field(description="Company overview")
+    news: CompanyNewsList = Field(description="List of company news articles")
+    reviews: CompanyReviewList = Field(description="List of company reviews")

@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 pyodbc  # Use pyodbc instead of pymssql
-pydantic
+pydantic>=2.5.0
 pydantic-settings
 aio_pika
 python-dotenv
@@ -13,6 +13,8 @@ langchain
 langchain_openai
 langchain-community
 requests
-duckduckgo-search
+duckduckgo-search>=4.1.1
 langgraph==0.1.5
 bs4
+colorama
+google-genai

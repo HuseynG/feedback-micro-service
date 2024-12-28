@@ -24,3 +24,4 @@ __pycache__/
 # alembic/version/__pycache__/
 .env
 *.log
+*.zip
