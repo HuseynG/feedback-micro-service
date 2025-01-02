@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 import os
 from dotenv import load_dotenv
 import logging
@@ -90,42 +90,59 @@ async def fetch_company_overview(company_name: str):
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")
 
-async def get_company_insights_(company_name: str):
+async def fetch_company_role(company_name: str, user_role: str=None, location: str=None) -> str:
+    try:
+        return await company_insights_generator.generate_company_role(company_name, user_role, location)
+    except Exception as e:
+        logger.error(f"Error getting company role: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting company role: {str(e)}")
+
+async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     # Gather all data concurrently
     overview_task = fetch_company_overview(company_name)
-    news_task = fetch_company_news(company_name)
-    reviews_task = fetch_company_reviews(company_name)
+    role_task = fetch_company_role(company_name, user_role, location)
+    # interview_task = fetch_company_interview(company_name, user_role, location) # InterviewProcess, PreparationGuide, CommonQuestions, InterviewInsights
+
+
+    # news_task = fetch_company_news(company_name) # RecentNews
+    # reviews_task = fetch_company_reviews(company_name) 
     
-    # # Wait for all tasks to complete
-    overview_content, news_content, reviews_content = await asyncio.gather(
+    
+    # # # Wait for all tasks to complete
+    # overview_content, news_content, reviews_content = await asyncio.gather(
+    #     overview_task,
+    #     news_task,
+    #     reviews_task,
+    #     return_exceptions=True
+    # )
+    
+    overview_content, role_content = await asyncio.gather(
         overview_task,
-        news_task,
-        reviews_task,
+        role_task,
         return_exceptions=True
     )
     
-    # # Handle any exceptions and create the response
-    # if isinstance(overview_content, Exception):
-    #     raise HTTPException(status_code=500, detail="Failed to fetch company overview")
-    # if isinstance(news_content, Exception):
-    #     raise HTTPException(status_code=500, detail="Failed to fetch news")
-    # if isinstance(reviews_content, Exception):
-    #     raise HTTPException(status_code=500, detail="Failed to fetch reviews")
+    news_content = None
+    reviews_content = None
     
-    res =  str({
+    raw_content = {
         "overview": overview_content,
         "news": news_content,
-        "reviews": reviews_content
-    })
+        "reviews": reviews_content,
+        "role": role_content
+    }
+    
+    return company_insights_generator.structure_company_insights(str(raw_content))
 
-    return company_insights_generator.structure_company_insights(res)
-
-
-@router.get("/insight/{company_name}")
-async def get_company_insights(company_name: str):
+@router.get("/insight")
+async def get_company_insights(
+    company_name: str = Query(..., description="Name of the company to get insights for"),
+    user_role: str = Query(None, description="Role of the user to get insights for"),
+    location: str = Query(None, description="Location of the user to get insights for")
+):
     """Get company overview information using AI agent"""
     try:
-        return await get_company_insights_(company_name)
+        return await get_company_insights_(company_name, user_role, location)
     except Exception as e:
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")

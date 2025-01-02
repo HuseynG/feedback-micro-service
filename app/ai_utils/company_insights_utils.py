@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
-from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList
+from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList, CompanyRole, Salary, Benefits, Culture, CareerGrowth, WorkEnvironment, JobRole
 
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
@@ -41,7 +41,7 @@ class CompanyInsightsGenerator:
             "overview": {
                 "company_name": str,
                 "website_url": str,
-                "values": list of strings,
+                "values": list of keywords which are str,
                 "vision": str,
                 "size": str,
                 "location": str,
@@ -49,7 +49,11 @@ class CompanyInsightsGenerator:
                 "ceo": str,
                 "company_type": str,
                 "business_nature": str,
-                "history": str
+                "history": str, 
+                "growth_areas": list of keywords which are str,
+                "challenges": list of keywords which are str,
+                "opportunities": list of keywords which are str,
+                "industry_trends": list of keywords which are str,
             },
             "news": {
                 "news": [
@@ -69,6 +73,39 @@ class CompanyInsightsGenerator:
                         "rating": float
                     }
                 ]
+            },
+            "company_role": {
+                "salary": {
+                    "range": str,
+                    "currency": str
+                },
+                "benefits": {
+                    "perks": list[str],
+                    "work_life_balance": str
+                },
+                "culture": {
+                    "values": list[str],
+                    "work_style": str,
+                    "team_dynamics": str
+                },
+                "career_growth": {
+                    "promotion_path": list[str],
+                    "learning_opportunities": list[str],
+                    "mentorship_programs": str
+                },
+                "work_environment": {
+                    "office_type": str,
+                    "remote_policy": str,
+                    "equipment_provided": list[str]
+                },
+                "job_role": {
+                    "title": str,
+                    "description": str,
+                    "responsibilities": list[str],
+                    "required_skills": list[str],
+                    "preferred_qualifications": list[str],
+                    "experience_level": str
+                }
             }
         }
 
@@ -102,13 +139,50 @@ class CompanyInsightsGenerator:
                     ceo="Unknown",
                     company_type="Unknown",
                     business_nature="Unknown",
-                    history="Information not available"
+                    history="Information not available",
+                    growth_area=["Unknown"],
+                    challenges=["Unknown"],
+                    opportunities=["Unknown"],
+                    industry_trends=["Unknown"]
                 ),
                 news=CompanyNewsList(
                     news=[]
                 ),
                 reviews=CompanyReviewList(
                     reviews=[]
+                ),
+                company_role=CompanyRole(
+                    salary=Salary(
+                        range=None,
+                        currency=None
+                    ),
+                    benefits=Benefits(
+                        perks=None,
+                        work_life_balance=None
+                    ),
+                    culture=Culture(
+                        values=None,
+                        work_style=None,
+                        team_dynamics=None
+                    ),
+                    career_growth=CareerGrowth(
+                        promotion_path=None,
+                        learning_opportunities=None,
+                        mentorship_programs=None
+                    ),
+                    work_environment=WorkEnvironment(
+                        office_type=None,
+                        remote_policy=None,
+                        equipment_provided=None
+                    ),
+                    job_role=JobRole(
+                        title="Unknown",
+                        description="Information not available",
+                        responsibilities=["Information not available"],
+                        required_skills=["Information not available"],
+                        preferred_qualifications=None,
+                        experience_level=None
+                    )
                 )
             )
 
@@ -135,7 +209,43 @@ class CompanyInsightsGenerator:
                             Company Type,
                             Company Business Nature,
                             Company History,
-                            Company About Us.""",
+                            Company About Us.
+                            Company Outlook such as growth area, challenges, opportunities,
+                            Industry Trends""",
+            config=GenerateContentConfig(
+                tools=[google_search_tool],
+                response_modalities=["TEXT"],
+            )
+        )
+
+        text = ""
+        for each in response.candidates[0].content.parts:
+            text += each.text + "\n"
+        
+        return text
+    
+    async def generate_company_role(self, company_name: str, user_role: str, location: str):
+        client = genai.Client()
+        model_id = "gemini-2.0-flash-exp"
+
+        google_search_tool = Tool(
+            google_search = GoogleSearch()
+        )
+
+        response = client.models.generate_content(
+            model=model_id,
+            contents=f"""Based on the following information, 
+            company name: {company_name}
+            role: {user_role}
+            location: {location}
+            
+            Please provide information about:
+            Salary (range and currency), 
+            Benefits (perks, work-life balance, etc), 
+            Culture (values, work style, team dynamics, etc), 
+            Career Growth (growth opportunities, career progression, etc), 
+            Work Environment (work hours, work from home, etc), 
+            Job Role (title, responsibilities, skills required, preferred Qualifications, experience level, etc.).""",
             config=GenerateContentConfig(
                 tools=[google_search_tool],
                 response_modalities=["TEXT"],
