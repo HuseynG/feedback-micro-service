@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
-from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList, CompanyRole, Salary, Benefits, Culture, CareerGrowth, WorkEnvironment, JobRole
+from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList, RoleInsight, Salary, Benefits, Culture, CareerGrowth, WorkEnvironment, JobRole, InterviewInsights, CommonQuestions, InterviewProcess, PreparationGuide
 
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
@@ -74,7 +74,7 @@ class CompanyInsightsGenerator:
                     }
                 ]
             },
-            "company_role": {
+            "role_insight": {
                 "salary": {
                     "range": str,
                     "currency": str
@@ -106,12 +106,29 @@ class CompanyInsightsGenerator:
                     "preferred_qualifications": list[str],
                     "experience_level": str
                 }
+            },
+            "interview_insights": {
+                "common_questions": {
+                    "technical": list[str],
+                    "behavioral": list[str],
+                    "role_specific": list[str]
+                },
+                "interview_process": {
+                    "stages": list[str],
+                    "duration": str,
+                    "tips": list[str]
+                },
+                "preparation_guide": {
+                    "technical_prep": list[str],
+                    "cultural_prep": list[str],
+                    "suggested_resources": list[str]
+                }
             }
         }
 
         Return the information in valid JSON format that matches this schema exactly.
         If any field is not found in the input, provide a reasonable placeholder or 'Unknown'.
-        For news and reviews, if no data is available, return empty lists."""
+        For news, reviews, and interview questions, if no data is available, return empty lists."""
 
         messages = [
             SystemMessage(content=system_prompt),
@@ -151,7 +168,7 @@ class CompanyInsightsGenerator:
                 reviews=CompanyReviewList(
                     reviews=[]
                 ),
-                company_role=CompanyRole(
+                company_role=RoleInsight(
                     salary=Salary(
                         range=None,
                         currency=None
@@ -182,6 +199,23 @@ class CompanyInsightsGenerator:
                         required_skills=["Information not available"],
                         preferred_qualifications=None,
                         experience_level=None
+                    )
+                ),
+                interview_insights=InterviewInsights(
+                    common_questions=CommonQuestions(
+                        technical=[],
+                        behavioral=[],
+                        role_specific=[]
+                    ),
+                    interview_process=InterviewProcess(
+                        stages=[],
+                        duration="Information not available",
+                        tips=[]
+                    ),
+                    preparation_guide=PreparationGuide(
+                        technical_prep=[],
+                        cultural_prep=[],
+                        suggested_resources=[]
                     )
                 )
             )
@@ -246,6 +280,53 @@ class CompanyInsightsGenerator:
             Career Growth (growth opportunities, career progression, etc), 
             Work Environment (work hours, work from home, etc), 
             Job Role (title, responsibilities, skills required, preferred Qualifications, experience level, etc.).""",
+            config=GenerateContentConfig(
+                tools=[google_search_tool],
+                response_modalities=["TEXT"],
+            )
+        )
+
+        text = ""
+        for each in response.candidates[0].content.parts:
+            text += each.text + "\n"
+        
+        return text
+    
+    async def generate_company_interview(self, company_name: str, user_role: str, location: str):
+        client = genai.Client()
+        model_id = "gemini-2.0-flash-exp"
+
+        google_search_tool = Tool(
+            google_search = GoogleSearch()
+        )
+
+        response = client.models.generate_content(
+            model=model_id,
+            contents=f"""Based on the following information, 
+            company name: {company_name}
+            role: {user_role}
+            location: {location}
+            
+            Please provide comprehensive interview information organized in the following sections:
+
+            1. Common Interview Questions:
+            - Technical interview questions typically asked
+            - Behavioral interview questions commonly used
+            - Role-specific questions for this position
+
+            2. Interview Process:
+            - All stages of the interview process
+            - Typical duration of the entire process
+            - Tips and advice for candidates
+
+            3. Preparation Guide:
+            - Technical preparation recommendations
+            - Cultural preparation tips
+            - Suggested resources for interview preparation (books, websites, courses)
+
+            Please provide detailed, specific information based on real experiences and data.
+            Focus on actual practices at {company_name} rather than generic advice.
+            """,
             config=GenerateContentConfig(
                 tools=[google_search_tool],
                 response_modalities=["TEXT"],

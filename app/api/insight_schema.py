@@ -61,7 +61,7 @@ class JobRole(BaseModel):
     preferred_qualifications: Optional[List[str]] = Field(None, description="Preferred qualifications")
     experience_level: Optional[str] = Field(None, description="Required experience level")
 
-class CompanyRole(BaseModel):
+class RoleInsight(BaseModel):
     salary: Salary = Field(..., description="Salary information")
     benefits: Benefits = Field(..., description="Benefits information")
     culture: Culture = Field(..., description="Culture information")
@@ -75,8 +75,31 @@ class CompanyNewsList(BaseModel):
 class CompanyReviewList(BaseModel):
     reviews: List[CompanyReview] = Field(description="List of company reviews")
 
+class InterviewProcess(BaseModel):
+    stages: Optional[List[str]] = Field(None, description="Interview process stages")
+    duration: Optional[str] = Field(None, description="Typical interview process duration")
+    tips: Optional[List[str]] = Field(None, description="Interview tips and advice")
+
+
+class PreparationGuide(BaseModel):
+    technical_prep: Optional[List[str]] = Field(None, description="Technical preparation tips")
+    cultural_prep: Optional[List[str]] = Field(None, description="Cultural preparation tips")
+    suggested_resources: Optional[List[str]] = Field(None, description="Suggested preparation resources")
+
+
+class CommonQuestions(BaseModel):
+    technical: Optional[List[str]] = Field(None, description="Common technical interview questions")
+    behavioral: Optional[List[str]] = Field(None, description="Common behavioral interview questions")
+    role_specific: Optional[List[str]] = Field(None, description="Role-specific interview questions")
+
+class InterviewInsights(BaseModel):
+    common_questions: CommonQuestions = Field(..., description="Common interview questions")
+    interview_process: InterviewProcess = Field(..., description="Interview process")
+    preparation_guide: PreparationGuide = Field(..., description="Preparation guide")
+
 class CompanyInsights(BaseModel):
     overview: CompanyOverview = Field(description="Company overview")
-    company_role: CompanyRole = Field(description="Company role")
+    role_insight: RoleInsight = Field(description="Company role")
     news: CompanyNewsList = Field(description="List of company news articles")
     reviews: CompanyReviewList = Field(description="List of company reviews")
+    interview_insights: InterviewInsights = Field(description="Interview insights")

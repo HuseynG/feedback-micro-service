@@ -5,13 +5,8 @@ import logging
 from typing import Optional, List
 from fastapi import HTTPException
 from datetime import datetime
-from .insight_schema import CompanyOverview, CompanyNewsList, CompanyReviewList, CompanyNews, CompanyReview
-from ai_utils.agent_utils.agent.workflow import create_overview_workflow
 from ai_utils.company_insights_utils import CompanyInsightsGenerator
-from ai_utils.agent_utils.utils.async_utils import process_query
 import asyncio
-import requests
-import pickle
 from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
 from ai_utils.chatbot_utils import AI_Generator
 import httpx
@@ -96,12 +91,19 @@ async def fetch_company_role(company_name: str, user_role: str=None, location: s
     except Exception as e:
         logger.error(f"Error getting company role: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company role: {str(e)}")
+    
+async def fetch_company_interview(company_name: str, user_role: str=None, location: str=None) -> str:
+    try:
+        return await company_insights_generator.generate_company_interview(company_name, user_role, location)
+    except Exception as e:
+        logger.error(f"Error getting company interview: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting company interview: {str(e)}")
 
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     # Gather all data concurrently
     overview_task = fetch_company_overview(company_name)
     role_task = fetch_company_role(company_name, user_role, location)
-    # interview_task = fetch_company_interview(company_name, user_role, location) # InterviewProcess, PreparationGuide, CommonQuestions, InterviewInsights
+    interview_task = fetch_company_interview(company_name, user_role, location)
 
 
     # news_task = fetch_company_news(company_name) # RecentNews
@@ -116,9 +118,10 @@ async def get_company_insights_(company_name: str, user_role: str=None, location
     #     return_exceptions=True
     # )
     
-    overview_content, role_content = await asyncio.gather(
+    overview_content, role_content, interview_content = await asyncio.gather(
         overview_task,
         role_task,
+        interview_task,
         return_exceptions=True
     )
     
@@ -129,7 +132,8 @@ async def get_company_insights_(company_name: str, user_role: str=None, location
         "overview": overview_content,
         "news": news_content,
         "reviews": reviews_content,
-        "role": role_content
+        "role": role_content,
+        "interview": interview_content
     }
     
     return company_insights_generator.structure_company_insights(str(raw_content))
