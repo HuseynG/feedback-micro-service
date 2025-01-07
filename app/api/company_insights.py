@@ -37,6 +37,7 @@ async def fetch_company_news(company_name: str) -> str:
         results = await read_webpages([news_url])
         if not results[0].success:
             raise HTTPException(status_code=500, detail="Failed to fetch news")
+        logger.info(f"News results: {results}")
         return "".join(r.content for r in results)
     except Exception as e:
         logger.error(f"Error getting company news: {str(e)}")
@@ -74,6 +75,7 @@ async def fetch_company_reviews(company_name: str) -> dict:
             headers=headers, 
                 params=reviews_params
             )
+        logger.info(f"Reviews response: {reviews_response.json()}")
         return str(reviews_response.json())
     except Exception as e:
         logger.error(f"Error getting company reviews: {str(e)}")
@@ -115,23 +117,21 @@ async def fetch_company_interview(company_name: str, user_role: str=None, locati
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     start_time = time.time()
     
-    overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
+    overview_content, role_content, interview_content, news_content = await asyncio.gather(
         fetch_company_overview(company_name),
         fetch_company_role(company_name, user_role, location),
         fetch_company_interview(company_name, user_role, location),
         fetch_company_news(company_name),
-        fetch_company_reviews(company_name),
+        # fetch_company_reviews(company_name),
         return_exceptions=True
     )
     end_time = time.time()
     logger.info(f"Total time taken: {end_time - start_time} seconds")
-    news_content = None
-    reviews_content = None
-    
+
     raw_content = {
         "overview": overview_content,
         "news": news_content,
-        "reviews": reviews_content,
+        "reviews": None,
         "role": role_content,
         "interview": interview_content
     }
