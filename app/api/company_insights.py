@@ -117,12 +117,12 @@ async def fetch_company_interview(company_name: str, user_role: str=None, locati
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     start_time = time.time()
     
-    overview_content, role_content, interview_content, news_content = await asyncio.gather(
+    overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
         fetch_company_overview(company_name),
         fetch_company_role(company_name, user_role, location),
         fetch_company_interview(company_name, user_role, location),
         fetch_company_news(company_name),
-        # fetch_company_reviews(company_name),
+        fetch_company_reviews(company_name),
         return_exceptions=True
     )
     end_time = time.time()
@@ -131,7 +131,7 @@ async def get_company_insights_(company_name: str, user_role: str=None, location
     raw_content = {
         "overview": overview_content,
         "news": news_content,
-        "reviews": None,
+        "reviews": reviews_content,
         "role": role_content,
         "interview": interview_content
     }
