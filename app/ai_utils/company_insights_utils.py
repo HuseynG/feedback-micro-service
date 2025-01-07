@@ -7,6 +7,7 @@ from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 import json
+import asyncio
 
 load_dotenv()
 
@@ -18,6 +19,9 @@ class CompanyInsightsGenerator:
 
         self.model = {
             'default_model': '4o-mini',
+            'overview_model': 'gemini-2.0-flash-exp',
+            'role_model': 'gemini-2.0-flash-exp',
+            'interview_model': 'gemini-2.0-flash-exp'
         }
 
         self.llm = AzureChatOpenAI(
@@ -29,6 +33,87 @@ class CompanyInsightsGenerator:
             temperature=0,
             seed=123
         )
+
+        self.client = genai.Client()
+        self.google_search_tool = Tool(
+            google_search = GoogleSearch()
+        )
+
+    async def _generate_content(self, prompt: str, model_name: str):
+        """Helper method to make async API calls to Gemini"""
+        response = await asyncio.to_thread(
+            self.client.models.generate_content,
+            model=self.model[model_name],
+            contents=prompt,
+            config=GenerateContentConfig(
+                tools=[self.google_search_tool],
+                response_modalities=["TEXT"],
+            )
+        )
+        
+        text = ""
+        for part in response.candidates[0].content.parts:
+            text += part.text + "\n"
+        return text
+
+    async def generate_company_overview(self, company_name: str):
+        prompt = f"""{company_name}  Company Information,
+                            Offical Website Link 
+                            Company Values, 
+                            Company Vision, 
+                            Company Mission,
+                            Company Size,
+                            Company Location,
+                            Company CEO,
+                            Company Type,
+                            Company Business Nature,
+                            Company History,
+                            Company About Us.
+                            Company Outlook such as growth area, challenges, opportunities,
+                            Industry Trends"""
+        return await self._generate_content(prompt, 'overview_model')
+
+    async def generate_company_role(self, company_name: str, user_role: str, location: str):
+        prompt = f"""Based on the following information, 
+            company name: {company_name}
+            role: {user_role}
+            location: {location}
+            
+            Please provide information about:
+            Salary (range and currency), 
+            Benefits (perks, work-life balance, etc), 
+            Culture (values, work style, team dynamics, etc), 
+            Career Growth (growth opportunities, career progression, etc), 
+            Work Environment (work hours, work from home, etc), 
+            Job Role (title, responsibilities, skills required, preferred Qualifications, experience level, etc.)."""
+        return await self._generate_content(prompt, 'role_model')
+
+    async def generate_company_interview(self, company_name: str, user_role: str, location: str):
+        prompt = f"""Based on the following information, 
+            company name: {company_name}
+            role: {user_role}
+            location: {location}
+            
+            Please provide comprehensive interview information organized in the following sections:
+
+            1. Common Interview Questions:
+            - Technical interview questions typically asked
+            - Behavioral interview questions commonly used
+            - Role-specific questions for this position
+
+            2. Interview Process:
+            - All stages of the interview process
+            - Typical duration of the entire process
+            - Tips and advice for candidates
+
+            3. Preparation Guide:
+            - Technical preparation recommendations
+            - Cultural preparation tips
+            - Suggested resources for interview preparation (books, websites, courses)
+
+            Please provide detailed, specific information based on real experiences and data.
+            Focus on actual practices at {company_name} rather than generic advice."""
+        return await self._generate_content(prompt, 'interview_model')
 
     def structure_company_insights(self, AI_output: str) -> CompanyInsights:
         """
@@ -146,21 +231,21 @@ class CompanyInsightsGenerator:
             # Fallback with basic information if structuring fails
             return CompanyInsights(
                 overview=CompanyOverview(
-                    company_name="Unknown",
-                    website_url="Unknown",
-                    values=["Unknown"],
-                    vision="Information not available",
-                    size="Unknown",
-                    location="Unknown",
-                    mission="Information not available",
-                    ceo="Unknown",
-                    company_type="Unknown",
-                    business_nature="Unknown",
-                    history="Information not available",
-                    growth_area=["Unknown"],
-                    challenges=["Unknown"],
-                    opportunities=["Unknown"],
-                    industry_trends=["Unknown"]
+                    company_name=None,
+                    website_url=None,
+                    values=[],
+                    vision=None,
+                    size=None,
+                    location=None,
+                    mission=None,
+                    ceo=None,
+                    company_type=None,
+                    business_nature=None,
+                    history=None,
+                    growth_areas=[],
+                    challenges=[],
+                    opportunities=[],
+                    industry_trends=[]
                 ),
                 news=CompanyNewsList(
                     news=[]
@@ -168,36 +253,36 @@ class CompanyInsightsGenerator:
                 reviews=CompanyReviewList(
                     reviews=[]
                 ),
-                company_role=RoleInsight(
+                role_insight=RoleInsight(
                     salary=Salary(
                         range=None,
                         currency=None
                     ),
                     benefits=Benefits(
-                        perks=None,
+                        perks=[],
                         work_life_balance=None
                     ),
                     culture=Culture(
-                        values=None,
+                        values=[],
                         work_style=None,
                         team_dynamics=None
                     ),
                     career_growth=CareerGrowth(
-                        promotion_path=None,
-                        learning_opportunities=None,
+                        promotion_path=[],
+                        learning_opportunities=[],
                         mentorship_programs=None
                     ),
                     work_environment=WorkEnvironment(
                         office_type=None,
                         remote_policy=None,
-                        equipment_provided=None
+                        equipment_provided=[]
                     ),
                     job_role=JobRole(
-                        title="Unknown",
-                        description="Information not available",
-                        responsibilities=["Information not available"],
-                        required_skills=["Information not available"],
-                        preferred_qualifications=None,
+                        title=None,
+                        description=None,
+                        responsibilities=[],
+                        required_skills=[],
+                        preferred_qualifications=[],
                         experience_level=None
                     )
                 ),
@@ -209,7 +294,7 @@ class CompanyInsightsGenerator:
                     ),
                     interview_process=InterviewProcess(
                         stages=[],
-                        duration="Information not available",
+                        duration=None,
                         tips=[]
                     ),
                     preparation_guide=PreparationGuide(
@@ -219,122 +304,3 @@ class CompanyInsightsGenerator:
                     )
                 )
             )
-
-    async def generate_company_overview(self, company_name: str):
-
-        client = genai.Client()
-        model_id = "gemini-2.0-flash-exp"
-
-        google_search_tool = Tool(
-            google_search = GoogleSearch()
-        )
-
-        response = client.models.generate_content(
-            model=model_id,
-            contents=f"""
-    {company_name}  Company Information,
-                            Offical Website Link 
-                            Company Values, 
-                            Company Vision, 
-                            Company Mission,
-                            Company Size,
-                            Company Location,
-                            Company CEO,
-                            Company Type,
-                            Company Business Nature,
-                            Company History,
-                            Company About Us.
-                            Company Outlook such as growth area, challenges, opportunities,
-                            Industry Trends""",
-            config=GenerateContentConfig(
-                tools=[google_search_tool],
-                response_modalities=["TEXT"],
-            )
-        )
-
-        text = ""
-        for each in response.candidates[0].content.parts:
-            text += each.text + "\n"
-        
-        return text
-    
-    async def generate_company_role(self, company_name: str, user_role: str, location: str):
-        client = genai.Client()
-        model_id = "gemini-2.0-flash-exp"
-
-        google_search_tool = Tool(
-            google_search = GoogleSearch()
-        )
-
-        response = client.models.generate_content(
-            model=model_id,
-            contents=f"""Based on the following information, 
-            company name: {company_name}
-            role: {user_role}
-            location: {location}
-            
-            Please provide information about:
-            Salary (range and currency), 
-            Benefits (perks, work-life balance, etc), 
-            Culture (values, work style, team dynamics, etc), 
-            Career Growth (growth opportunities, career progression, etc), 
-            Work Environment (work hours, work from home, etc), 
-            Job Role (title, responsibilities, skills required, preferred Qualifications, experience level, etc.).""",
-            config=GenerateContentConfig(
-                tools=[google_search_tool],
-                response_modalities=["TEXT"],
-            )
-        )
-
-        text = ""
-        for each in response.candidates[0].content.parts:
-            text += each.text + "\n"
-        
-        return text
-    
-    async def generate_company_interview(self, company_name: str, user_role: str, location: str):
-        client = genai.Client()
-        model_id = "gemini-2.0-flash-exp"
-
-        google_search_tool = Tool(
-            google_search = GoogleSearch()
-        )
-
-        response = client.models.generate_content(
-            model=model_id,
-            contents=f"""Based on the following information, 
-            company name: {company_name}
-            role: {user_role}
-            location: {location}
-            
-            Please provide comprehensive interview information organized in the following sections:
-
-            1. Common Interview Questions:
-            - Technical interview questions typically asked
-            - Behavioral interview questions commonly used
-            - Role-specific questions for this position
-
-            2. Interview Process:
-            - All stages of the interview process
-            - Typical duration of the entire process
-            - Tips and advice for candidates
-
-            3. Preparation Guide:
-            - Technical preparation recommendations
-            - Cultural preparation tips
-            - Suggested resources for interview preparation (books, websites, courses)
-
-            Please provide detailed, specific information based on real experiences and data.
-            Focus on actual practices at {company_name} rather than generic advice.
-            """,
-            config=GenerateContentConfig(
-                tools=[google_search_tool],
-                response_modalities=["TEXT"],
-            )
-        )
-
-        text = ""
-        for each in response.candidates[0].content.parts:
-            text += each.text + "\n"
-        
-        return text

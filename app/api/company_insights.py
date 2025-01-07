@@ -10,6 +10,7 @@ import asyncio
 from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
 from ai_utils.chatbot_utils import AI_Generator
 import httpx
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -80,51 +81,50 @@ async def fetch_company_reviews(company_name: str) -> dict:
 
 async def fetch_company_overview(company_name: str):
     try:
-        return await company_insights_generator.generate_company_overview(company_name)
+        start_time = time.time()
+        overview_content = await company_insights_generator.generate_company_overview(company_name)
+        end_time = time.time()
+        logger.info(f"Total time taken (fetch_company_overview): {end_time - start_time} seconds")
+        return overview_content
     except Exception as e:
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")
 
 async def fetch_company_role(company_name: str, user_role: str=None, location: str=None) -> str:
     try:
-        return await company_insights_generator.generate_company_role(company_name, user_role, location)
+        start_time = time.time()
+        role_content = await company_insights_generator.generate_company_role(company_name, user_role, location)
+        end_time = time.time()
+        logger.info(f"Total time taken (fetch_company_role): {end_time - start_time} seconds")
+        return role_content
     except Exception as e:
         logger.error(f"Error getting company role: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company role: {str(e)}")
     
 async def fetch_company_interview(company_name: str, user_role: str=None, location: str=None) -> str:
     try:
-        return await company_insights_generator.generate_company_interview(company_name, user_role, location)
+        start_time = time.time()
+        interview_content = await company_insights_generator.generate_company_interview(company_name, user_role, location)
+        end_time = time.time()
+        logger.info(f"Total time taken (fetch_company_interview): {end_time - start_time} seconds")
+        return interview_content
     except Exception as e:
         logger.error(f"Error getting company interview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company interview: {str(e)}")
 
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
-    # Gather all data concurrently
-    overview_task = fetch_company_overview(company_name)
-    role_task = fetch_company_role(company_name, user_role, location)
-    interview_task = fetch_company_interview(company_name, user_role, location)
-
-
-    # news_task = fetch_company_news(company_name) # RecentNews
-    # reviews_task = fetch_company_reviews(company_name) 
+    start_time = time.time()
     
-    
-    # # # Wait for all tasks to complete
-    # overview_content, news_content, reviews_content = await asyncio.gather(
-    #     overview_task,
-    #     news_task,
-    #     reviews_task,
-    #     return_exceptions=True
-    # )
-    
-    overview_content, role_content, interview_content = await asyncio.gather(
-        overview_task,
-        role_task,
-        interview_task,
+    overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
+        fetch_company_overview(company_name),
+        fetch_company_role(company_name, user_role, location),
+        fetch_company_interview(company_name, user_role, location),
+        fetch_company_news(company_name),
+        fetch_company_reviews(company_name),
         return_exceptions=True
     )
-    
+    end_time = time.time()
+    logger.info(f"Total time taken: {end_time - start_time} seconds")
     news_content = None
     reviews_content = None
     
