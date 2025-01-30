@@ -1,6 +1,0 @@
-aio_pika
-sqlalchemy
-pyodbc  # Use pyodbc instead of pymssql
-python-dotenv
-pydantic
-pydantic-settings

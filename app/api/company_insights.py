@@ -8,7 +8,7 @@ from datetime import datetime
 from ai_utils.company_insights_utils import CompanyInsightsGenerator
 import asyncio
 from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
-from ai_utils.chatbot_utils import AI_Generator
+# from ai_utils.chatbot_utils import AI_Generator
 import httpx
 import time
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-ai_generator = AI_Generator()
+# ai_generator = AI_Generator()
 company_insights_generator = CompanyInsightsGenerator()
 
 router = APIRouter(

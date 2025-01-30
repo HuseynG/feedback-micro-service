@@ -1,7 +1,5 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
-pyodbc  # Use pyodbc instead of pymssql
 pydantic>=2.5.0
 pydantic-settings
 aio_pika
