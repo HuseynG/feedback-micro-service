@@ -138,7 +138,7 @@ class AI_Generator:
             seed=123
         )
 
-    def generate_questions(self, text):
+    async def generate_questions(self, text):
 
         system_prompt = prompt_templates.question_generator_model_system_prompt_template
         user_prompt = prompt_templates.question_generator_model_user_prompt_template
@@ -149,12 +149,11 @@ class AI_Generator:
         convo = [system_message, user_message]
 
         structured_question_generator_model = self.question_generator_model.with_structured_output(InterviewQuestions)
-        response = structured_question_generator_model.invoke(convo)
-        response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
+        response = await structured_question_generator_model.ainvoke(convo)
+        
+        return response.dict()
 
-        return response_json
-    
-    def generate_q_feedback(self, text):
+    async def generate_q_feedback(self, text):
 
         system_prompt = prompt_templates.question_feedback_generator_model_system_prompt_template
         user_prompt = prompt_templates.question_feedback_generator_model_user_prompt_template
@@ -165,28 +164,22 @@ class AI_Generator:
         convo = [system_message, user_message]
 
         structured_question_feedback_generator_model = self.question_feedback_generator_model.with_structured_output(QA)
-        response = structured_question_feedback_generator_model.invoke(convo)
+        response = await structured_question_feedback_generator_model.ainvoke(convo)
         
-        # Parse the response into a QA object
         qa_instance = QA.model_validate(response.dict())
 
-        # Check if ai_feedback is not None
         if qa_instance.ai_feedback:
-            # Calculate the overall summary
             calculate_overall_summary(qa_instance.ai_feedback)
         else:
-            # Initialize ai_feedback and set overall_summary
             qa_instance.ai_feedback = QA_Feedback_Model()
             qa_instance.ai_feedback.overall_summary = QA_Feedback_Model_Content(
                 rating=0.0,
                 feedback="No feedback provided."
             )
 
-        # Return the QA object as a dictionary
         return qa_instance.model_dump()
-    
-    def generate_follow_up_qs(self, text):
-        # logger.debug(f"{text}")
+
+    async def generate_follow_up_qs(self, text):
         system_prompt = prompt_templates.follow_up_question_generator_model_system_prompt_template
         user_prompt = prompt_templates.follow_up_question_generator_model_user_prompt_template
 
@@ -196,10 +189,9 @@ class AI_Generator:
         convo = [system_message, user_message]
 
         structured_follow_up_question_generator_model = self.question_generator_model.with_structured_output(InterviewFollowupQuestions)
-        response = structured_follow_up_question_generator_model.invoke(convo)
-        response_json = json.loads(response.model_dump_json())  # Converting to JSON/dict object type
-        # logger.debug(f"{response_json}")
-        return response_json
+        response = await structured_follow_up_question_generator_model.ainvoke(convo)
+        
+        return response.dict()
 
     def organise_with_schema(self, text: str, output_schema: Type[BaseModel]) -> BaseModel:
         """

@@ -48,12 +48,13 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
-# Load the expected API key from environment variables
-EXPECTED_API_KEY = os.getenv("EXPECTED_API_KEY")
-
-def verify_api_key(api_key: str = Header(...)) -> None:
+def verify_api_key(api_key: str = Header(..., alias="api-key")) -> None:
     """
     Verifies the API key by checking if it matches the expected key stored in environment variables.
     """
-    if api_key != EXPECTED_API_KEY:
+    expected_api_key = os.getenv("EXPECTED_API_KEY")
+    if not expected_api_key:
+        raise HTTPException(status_code=500, detail="API Key not configured on server")
+    
+    if api_key != expected_api_key:
         raise HTTPException(status_code=403, detail="Invalid API Key")

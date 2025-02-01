@@ -99,7 +99,7 @@ async def create_interview(interview: schemas.InterviewCreate, db=Depends(get_da
         raise HTTPException(status_code=400, detail="Job title or description type are required fields.")
     
     try:
-        res = ai_generator.generate_questions(interview.get_combined_job_info())
+        res = await ai_generator.generate_questions(interview.get_combined_job_info())
     except Exception as e:
         logger.error(f"AI question generation failed: {e}")
         raise HTTPException(status_code=500, detail="Error generating questions.")
@@ -227,7 +227,7 @@ async def generate_interview_feedback(user_id: str, interview_id: str, body: sch
             qa_found = True
             
             # Generate feedback for the main question            
-            main_feedback = ai_generator.generate_q_feedback(
+            main_feedback = await ai_generator.generate_q_feedback(
                 temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
             )
             logger.debug(main_feedback)
@@ -246,7 +246,7 @@ async def generate_interview_feedback(user_id: str, interview_id: str, body: sch
                 followup_found = True
                 
                 # Generate feedback for the follow-up question
-                followup_feedback = ai_generator.generate_q_feedback(
+                followup_feedback = await ai_generator.generate_q_feedback(
                     temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
                 )
                 
@@ -378,7 +378,7 @@ async def generate_followup_questions(user_id: str, interview_id: str, body: sch
                 return random_selection
             
             # Generate follow-up questions if the count is less than 25
-            res = ai_generator.generate_follow_up_qs(
+            res = await ai_generator.generate_follow_up_qs(
                 temp_interview.get_combined_job_info()+ " | " + body.get_combined_Q_info()
             )
             
