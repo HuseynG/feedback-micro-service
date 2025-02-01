@@ -4,17 +4,37 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import os
 
 class TestInterviewEndpoints:
-    """Test suite for Interview API endpoints."""
+    """Test suite for Interview API endpoints.
+    
+    This suite verifies the functionality of the interview-related API endpoints,
+    including interview creation and feedback generation. It tests:
+    1. Interview creation with various parameters
+    2. Feedback generation for interview answers
+    3. API authentication and authorization
+    4. Integration with AI services
+    5. Database operations and state management
+    """
 
     @patch('app.api.interview.AI_Generator')
     def test_create_interview(self, mock_ai_generator, test_client):
-        """
-        Test interview creation endpoint.
-
-        Should successfully create a new interview with the provided data.
-
+        """Test the interview creation endpoint (/interview/generate-question).
+        
+        This test verifies that:
+        1. The endpoint accepts and validates interview creation parameters
+        2. It properly integrates with the AI generator for question generation
+        3. The response includes all required fields (id, user_id, job_title, QAs)
+        4. The API key authentication works correctly
+        5. The interview data is properly stored in the database
+        
         Args:
-            test_client: FastAPI test client
+            mock_ai_generator: Mock of the AI_Generator class
+            test_client: FastAPI TestClient instance
+            
+        The test passes if:
+        - Response status code is 200
+        - Response contains a valid interview ID
+        - User ID and job title match the input
+        - Questions are generated and stored
         """
         mock_instance = MagicMock()
         mock_response = {
@@ -54,14 +74,25 @@ class TestInterviewEndpoints:
 
     @patch('app.api.interview.AI_Generator')
     def test_generate_feedback(self, mock_ai_generator, test_client, mock_db):
-        """
-        Test interview feedback generation endpoint.
-
-        Should successfully generate feedback for a given answer.
-
+        """Test the feedback generation endpoint.
+        
+        This test verifies that:
+        1. The endpoint can process answer submissions
+        2. It integrates correctly with the AI feedback generator
+        3. The feedback includes all required components (ratings, comments)
+        4. The database is properly updated with feedback
+        5. The response format matches the expected schema
+        
         Args:
-            test_client: FastAPI test client
-            mock_db: Mocked MongoDB instance
+            mock_ai_generator: Mock of the AI_Generator class
+            test_client: FastAPI TestClient instance
+            mock_db: Mock of the MongoDB database
+            
+        The test passes if:
+        - The feedback is generated successfully
+        - The response includes detailed feedback components
+        - The database is updated with the feedback
+        - The response format matches expectations
         """
         # Mock AI response
         mock_instance = MagicMock()

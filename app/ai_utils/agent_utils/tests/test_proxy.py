@@ -11,7 +11,20 @@ from tools.search_tools import create_search_tool
 import time
 
 async def test_concurrent_searches():
-    """Test concurrent searches with proxy configuration."""
+    """Test the ability to perform multiple concurrent searches using the proxy configuration.
+    
+    This test verifies that:
+    1. Multiple search queries can be executed simultaneously
+    2. The proxy handles concurrent requests properly
+    3. Each search returns results within an acceptable time frame
+    4. The system properly handles both successful and failed searches
+    
+    The test uses a set of general knowledge queries to simulate real-world usage.
+    Success is determined by:
+    - All queries completing without errors
+    - Response times being within acceptable limits
+    - Valid results being returned for each query
+    """
     search_tool = create_search_tool()
     
     # Test queries
@@ -72,7 +85,17 @@ async def test_concurrent_searches():
     print(f"Overall Status: {'✅ All Successful' if all_successful else '❌ Some Failed'}")
 
 async def test_proxy_connection():
-    """Test basic proxy connection."""
+    """Test the basic connectivity to the Oxylabs proxy service.
+    
+    This test verifies that:
+    1. The proxy configuration is correct (host, port, credentials)
+    2. A connection can be established through the proxy
+    3. The proxy successfully masks our real IP address
+    4. We can retrieve basic geolocation data through the proxy
+    
+    The test uses ip-api.com to verify the proxy connection and retrieve
+    information about the proxy server's location and ISP.
+    """
     proxies = OxylabsConfig.get_proxies()
     proxy_url = proxies["http"]
     
@@ -94,7 +117,16 @@ async def test_proxy_connection():
         print(f"Error: {str(e)}")
 
 async def main():
-    """Run all tests."""
+    """Execute all proxy-related tests in sequence.
+    
+    This is the main test runner that:
+    1. Initializes the test environment
+    2. Runs the basic proxy connection test
+    3. Runs the concurrent search test
+    4. Reports overall test results
+    
+    This function should be used as the entry point when running proxy tests independently.
+    """
     print("Starting Proxy Tests...")
     
     # Test basic proxy connection

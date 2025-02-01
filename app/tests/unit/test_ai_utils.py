@@ -13,6 +13,18 @@ def ai_generator():
 
 @pytest.fixture(autouse=True)
 async def mock_azure_openai():
+    """Fixture that provides a mocked Azure OpenAI client for testing.
+    
+    This fixture:
+    1. Creates mock responses for both question generation and feedback
+    2. Simulates the Azure OpenAI API behavior without making actual API calls
+    3. Provides consistent test data across all test cases
+    
+    The mock includes:
+    - Mock questions with ideal answers
+    - Mock feedback with detailed ratings and comments
+    - Simulated structured output responses
+    """
     # Mock responses
     mock_questions_data = {
         "qas": [{"question": "Test question?", "ideal_answer": "Test answer"}]
@@ -71,18 +83,34 @@ async def mock_azure_openai():
         yield MockAzureChatOpenAI
 
 class TestAIGenerator:
-    """Test suite for AI_Generator class."""
+    """Test suite for AI_Generator class.
+    
+    This suite verifies the core functionality of the AI-powered interview question
+    and feedback generation system. It tests:
+    1. Question generation for different job roles and levels
+    2. Feedback generation for interview answers
+    3. Integration with Azure OpenAI services
+    4. Proper handling of structured outputs
+    """
     
     @pytest.mark.asyncio
     async def test_generate_questions(self, ai_generator, mock_azure_openai):
-        """
-        Test question generation functionality.
-
-        Should successfully generate interview questions using Azure OpenAI.
-
+        """Test the AI-powered interview question generation.
+        
+        This test verifies that:
+        1. Questions are generated in the correct format
+        2. Each question includes both the question text and ideal answer
+        3. The Azure OpenAI integration works as expected
+        4. The structured output matches the expected schema
+        
         Args:
-            ai_generator: The generator instance
-            mock_azure_openai: Mocked Azure OpenAI client
+            ai_generator: Fixture providing an AI_Generator instance
+            mock_azure_openai: Fixture providing a mocked Azure OpenAI client
+            
+        The test passes if:
+        - The result is a dictionary containing a 'qas' key
+        - At least one question-answer pair is generated
+        - The structure matches the expected InterviewQuestions schema
         """
         mock_response = {
             "qas": [{"question": "Test question?", "ideal_answer": "Test answer"}]
@@ -100,9 +128,8 @@ class TestAIGenerator:
 
     @pytest.mark.asyncio
     async def test_generate_q_feedback(self, ai_generator, mock_azure_openai):
-        """
-        Test answer feedback generation.
-
+        """Test answer feedback generation.
+        
         Should successfully generate feedback for interview answers using Azure OpenAI.
 
         Args:
