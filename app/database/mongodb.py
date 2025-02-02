@@ -16,7 +16,7 @@ class MongoDB:
     def connect_to_mongodb(cls):
         """Connect to MongoDB and initialize databases"""
         mongodb_conn_str = os.getenv("MONGODB_CONN_STR")
-        mongodb_db_name = os.getenv("MONGODB_DB_NAME", "feedback_db")
+        mongodb_db_name = os.getenv("MONGODB_DB_NAME", "PythonMicroserviceDB")
         
         if not mongodb_conn_str:
             raise ValueError("MONGODB_CONN_STR environment variable is not set")
@@ -29,6 +29,8 @@ class MongoDB:
             cls.interviews = cls.db.get_collection("interviews")
             cls.company_insights = cls.db.get_collection("company_insights")
             
+            cls.company_insights.create_index([("createdAt", 1)], expireAfterSeconds=3600*24*7)
+
             # Test the connection
             cls.client.admin.command('ping')
             logger.info(f"Connected to MongoDB database: {mongodb_db_name}")

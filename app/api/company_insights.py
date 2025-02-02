@@ -3,8 +3,8 @@ import os
 from dotenv import load_dotenv
 import logging
 from typing import Optional, List
+from datetime import datetime, timedelta
 from fastapi import HTTPException
-from datetime import datetime
 from ai_utils.company_insights_utils import CompanyInsightsGenerator
 import asyncio
 from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
@@ -197,7 +197,9 @@ async def get_company_insights(
         logger.info(f"Insights data: {insights_data}")
         
         # Cache the results - insights_data already contains user query info
-        mongodb.company_insights.insert_one(insights_data.dict())
+        insights_dict = insights_data.dict()
+        insights_dict["createdAt"] = datetime.utcnow()  # Add TTL field
+        mongodb.company_insights.insert_one(insights_dict)
         
         return insights_data
     except Exception as e:
