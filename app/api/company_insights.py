@@ -13,6 +13,8 @@ import httpx
 import time
 from database.mongodb import mongodb
 from api.insight_schema import CompanyInsights
+from bson import json_util
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -163,16 +165,19 @@ async def get_cached_insights(company_name: str, user_role: Optional[str] = None
     """
     try:
         cache_query = {
-            "company_name": company_name,
-            "user_role": user_role,
-            "location": location
+            "user_query.company_name": company_name,
+            "user_query.user_role": user_role if user_role else "Unknown",
+            "user_query.location": location if location else "Unknown"
         }
         
-        cached_insights = await mongodb.company_insights.find_one(cache_query)
+        logger.info(f"Cache query: {cache_query}")
+        cached_insights = mongodb.company_insights.find_one(cache_query)
+        logger.info(f"Found document: {cached_insights is not None}")
         
         if cached_insights:
             logger.info("Found cached insights, returning from cache")
-            return cached_insights["insights_data"]
+            # Convert MongoDB document to JSON-serializable dict
+            return json.loads(json_util.dumps(cached_insights))
             
         return None
     except Exception as e:
@@ -191,17 +196,21 @@ async def get_company_insights(
         cached_result = await get_cached_insights(company_name, user_role, location)
         if cached_result:
             return cached_result
-            
+
         # If not in cache, generate new insights
+        logger.info("No cache found, generating new insights")
         insights_data = await get_company_insights_(company_name, user_role, location)
-        logger.info(f"Insights data: {insights_data}")
         
-        # Cache the results - insights_data already contains user query info
+        # Cache the results
         insights_dict = insights_data.dict()
-        insights_dict["createdAt"] = datetime.utcnow()  # Add TTL field
+        insights_dict["createdAt"] = datetime.utcnow()
+        
+        # Insert into MongoDB
         mongodb.company_insights.insert_one(insights_dict)
+        logger.info("Cached new insights")
         
         return insights_data
+        
     except Exception as e:
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")
