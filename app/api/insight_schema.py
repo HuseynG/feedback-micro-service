@@ -95,7 +95,13 @@ class InterviewInsights(BaseModel):
     interview_process: InterviewProcess = Field(default_factory=InterviewProcess, description="Interview process")
     preparation_guide: PreparationGuide = Field(default_factory=PreparationGuide, description="Preparation guide")
 
+class UserQuery(BaseModel):
+    company_name: str = Field(description="Name of the company (user's query)")
+    user_role: str = Field(description="Role of the candidate (user's query)")
+    location: str = Field(description="Location of the company (user's query)")
+
 class CompanyInsights(BaseModel):
+    user_query: UserQuery = Field(default_factory=UserQuery, description="User's query")
     overview: CompanyOverview = Field(default_factory=CompanyOverview, description="Company overview")
     role_insight: RoleInsight = Field(default_factory=RoleInsight, description="Company role")
     news: CompanyNewsList = Field(default_factory=CompanyNewsList, description="List of company news articles")

@@ -11,6 +11,8 @@ from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
 # from ai_utils.chatbot_utils import AI_Generator
 import httpx
 import time
+from database.mongodb import mongodb
+from api.insight_schema import CompanyInsights
 
 # Configure logging
 logging.basicConfig(
@@ -117,26 +119,65 @@ async def fetch_company_interview(company_name: str, user_role: str=None, locati
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     start_time = time.time()
     
-    overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
-        fetch_company_overview(company_name),
-        fetch_company_role(company_name, user_role, location),
-        fetch_company_interview(company_name, user_role, location),
-        fetch_company_news(company_name),
-        fetch_company_reviews(company_name),
-        return_exceptions=True
-    )
-    end_time = time.time()
-    logger.info(f"Total time taken: {end_time - start_time} seconds")
+    # overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
+    #     fetch_company_overview(company_name),
+    #     fetch_company_role(company_name, user_role, location),
+    #     fetch_company_interview(company_name, user_role, location),
+    #     fetch_company_news(company_name),
+    #     fetch_company_reviews(company_name),
+    #     return_exceptions=True
+    # )
+    # end_time = time.time()
+    # logger.info(f"Total time taken: {end_time - start_time} seconds")
 
-    raw_content = {
-        "overview": overview_content,
-        "news": news_content,
-        "reviews": reviews_content,
-        "role": role_content,
-        "interview": interview_content
-    }
+    # raw_content = {
+    #     "user_query": {
+    #         "company_name": company_name,
+    #         "user_role": user_role,
+    #         "location": location
+    #     },
+    #     "overview": overview_content,
+    #     "news": news_content,
+    #     "reviews": reviews_content,
+    #     "role": role_content,
+    #     "interview": interview_content
+    # }
+    # loading dummy pickled for testing purposes. 
+    import pickle
+    with open("company_insights_raw_content.pkl", "rb") as f:
+        raw_content = pickle.load(f)
     
     return company_insights_generator.structure_company_insights(str(raw_content))
+
+async def get_cached_insights(company_name: str, user_role: Optional[str] = None, location: Optional[str] = None) -> Optional[dict]:
+    """
+    Retrieve cached company insights from MongoDB if they exist.
+    
+    Args:
+        company_name (str): Name of the company
+        user_role (Optional[str]): Role of the user
+        location (Optional[str]): Location of the user
+        
+    Returns:
+        Optional[dict]: Cached insights data if found, None otherwise
+    """
+    try:
+        cache_query = {
+            "company_name": company_name,
+            "user_role": user_role,
+            "location": location
+        }
+        
+        cached_insights = await mongodb.company_insights.find_one(cache_query)
+        
+        if cached_insights:
+            logger.info("Found cached insights, returning from cache")
+            return cached_insights["insights_data"]
+            
+        return None
+    except Exception as e:
+        logger.error(f"Error retrieving cached insights: {str(e)}")
+        return None
 
 @router.get("/insight")
 async def get_company_insights(
@@ -146,7 +187,19 @@ async def get_company_insights(
 ):
     """Get company overview information using AI agent"""
     try:
-        return await get_company_insights_(company_name, user_role, location)
+        # Check cache first
+        cached_result = await get_cached_insights(company_name, user_role, location)
+        if cached_result:
+            return cached_result
+            
+        # If not in cache, generate new insights
+        insights_data = await get_company_insights_(company_name, user_role, location)
+        logger.info(f"Insights data: {insights_data}")
+        
+        # Cache the results - insights_data already contains user query info
+        mongodb.company_insights.insert_one(insights_data.dict())
+        
+        return insights_data
     except Exception as e:
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")

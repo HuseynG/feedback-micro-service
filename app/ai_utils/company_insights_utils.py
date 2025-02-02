@@ -123,6 +123,11 @@ class CompanyInsightsGenerator:
         system_prompt = """You are a helpful assistant that structures company information.
         Given raw text about a company, extract and structure the information according to the following schema:
         {
+            "user_query": {
+                "company_name": str,
+                "role": str,
+                "location": str
+            },
             "overview": {
                 "company_name": str,
                 "website_url": str,
@@ -230,6 +235,11 @@ class CompanyInsightsGenerator:
         except Exception as e:
             # Fallback with basic information if structuring fails
             return CompanyInsights(
+                user_query={
+                    "company_name": None,
+                    "role": None,
+                    "location": None
+                },
                 overview=CompanyOverview(
                     company_name=None,
                     website_url=None,
