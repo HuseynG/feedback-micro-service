@@ -122,33 +122,33 @@ async def fetch_company_interview(company_name: str, user_role: str=None, locati
 async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
     start_time = time.time()
     
-    # overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
-    #     fetch_company_overview(company_name),
-    #     fetch_company_role(company_name, user_role, location),
-    #     fetch_company_interview(company_name, user_role, location),
-    #     fetch_company_news(company_name),
-    #     fetch_company_reviews(company_name),
-    #     return_exceptions=True
-    # )
-    # end_time = time.time()
-    # logger.info(f"Total time taken: {end_time - start_time} seconds")
+    overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
+        fetch_company_overview(company_name),
+        fetch_company_role(company_name, user_role, location),
+        fetch_company_interview(company_name, user_role, location),
+        fetch_company_news(company_name),
+        fetch_company_reviews(company_name),
+        return_exceptions=True
+    )
+    end_time = time.time()
+    logger.info(f"Total time taken: {end_time - start_time} seconds")
 
-    # raw_content = {
-    #     "user_query": {
-    #         "company_name": company_name,
-    #         "user_role": user_role,
-    #         "location": location
-    #     },
-    #     "overview": overview_content,
-    #     "news": news_content,
-    #     "reviews": reviews_content,
-    #     "role": role_content,
-    #     "interview": interview_content
-    # }
-    # loading dummy pickled for testing purposes. 
-    import pickle
-    with open("company_insights_raw_content.pkl", "rb") as f:
-        raw_content = pickle.load(f)
+    raw_content = {
+        "user_query": {
+            "company_name": company_name,
+            "user_role": user_role,
+            "location": location
+        },
+        "overview": overview_content,
+        "news": news_content,
+        "reviews": reviews_content,
+        "role": role_content,
+        "interview": interview_content
+    }
+    # # loading dummy pickled for testing purposes. 
+    # import pickle
+    # with open("company_insights_raw_content.pkl", "rb") as f:
+    #     raw_content = pickle.load(f)
     
     return company_insights_generator.structure_company_insights(str(raw_content))
 
