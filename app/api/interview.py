@@ -338,7 +338,7 @@ async def generate_followup_questions(user_id: str, interview_id: str, body: sch
     if interview is None:
         raise HTTPException(status_code=404, detail="Interview not found")
     
-    # If the user does not have access to this interview
+    # Check if the user has access to this interview
     if user_id != interview.get('user_id'):
         raise HTTPException(status_code=403, detail="User does not have access to this interview")
     
