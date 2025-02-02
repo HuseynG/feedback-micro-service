@@ -11,6 +11,7 @@ from ai_utils.agent_utils.tools.ai_web_reader import read_webpages
 # from ai_utils.chatbot_utils import AI_Generator
 import httpx
 import time
+import re
 from database.mongodb import mongodb
 from api.insight_schema import CompanyInsights
 from bson import json_util
@@ -164,10 +165,11 @@ async def get_cached_insights(company_name: str, user_role: Optional[str] = None
         Optional[dict]: Cached insights data if found, None otherwise
     """
     try:
+        # Use case-insensitive regex for all fields
         cache_query = {
-            "user_query.company_name": company_name,
-            "user_query.user_role": user_role if user_role else "Unknown",
-            "user_query.location": location if location else "Unknown"
+            "user_query.company_name": {"$regex": f"^{re.escape(company_name)}$", "$options": "i"},
+            "user_query.user_role": {"$regex": f"^{re.escape(user_role if user_role else 'Unknown')}$", "$options": "i"},
+            "user_query.location": {"$regex": f"^{re.escape(location if location else 'Unknown')}$", "$options": "i"}
         }
         
         logger.info(f"Cache query: {cache_query}")
@@ -201,9 +203,14 @@ async def get_company_insights(
         logger.info("No cache found, generating new insights")
         insights_data = await get_company_insights_(company_name, user_role, location)
         
-        # Cache the results
+        # Cache the results - normalize all fields when storing
         insights_dict = insights_data.dict()
         insights_dict["createdAt"] = datetime.utcnow()
+        
+        # Normalize all user query fields
+        insights_dict["user_query"]["company_name"] = company_name.title()
+        insights_dict["user_query"]["user_role"] = (user_role.title() if user_role else "Unknown")
+        insights_dict["user_query"]["location"] = (location.title() if location else "Unknown")
         
         # Insert into MongoDB
         mongodb.company_insights.insert_one(insights_dict)
