@@ -12,7 +12,7 @@ import random
 
 router = APIRouter(
     prefix="/interview",
-    tags=["interview"],
+    tags=["Interview"],
     responses={404: {"description": "Not found"}},
 )
 

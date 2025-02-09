@@ -32,7 +32,7 @@ company_insights_generator = CompanyInsightsGenerator()
 
 router = APIRouter(
     prefix="/company_insights",
-    tags=["company_insights"],
+    tags=["Company Insights"],
     responses={404: {"description": "Not found"}},
 )
 

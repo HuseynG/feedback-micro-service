@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     AZURE_SQL_TRUST_CERTIFICATE: str = Field(default='no', env='AZURE_SQL_TRUST_CERTIFICATE')
     TIMEOUT: str = Field(default='30', env='TIMEOUT')
     
+    # Azure Blob Storage
+    AZURE_STORAGE_CONNECTION_STRING: str = Field(..., env='AZURE_STORAGE_CONNECTION_STRING')
+    
     # RabbitMQ Configuration
     RABBITMQ_HOST: str = Field(default='localhost', env='RABBITMQ_HOST')
     RABBITMQ_PORT: str = Field(default='5672', env='RABBITMQ_PORT')

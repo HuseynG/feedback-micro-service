@@ -17,3 +17,5 @@ langgraph==0.1.5
 bs4
 colorama
 google-genai
+azure-storage-blob>=12.0.0
+python-multipart
