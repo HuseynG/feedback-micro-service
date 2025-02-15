@@ -37,6 +37,18 @@ router = APIRouter(
 )
 
 async def fetch_company_news(company_name: str) -> str:
+    """
+    **Fetch recent news articles about a company using Bing News.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company to fetch news for\n
+    \n
+    **Returns:**\n
+        str: Concatenated news articles content\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If news fetching fails\n
+    """
     try:
         news_url = f"https://www.bing.com/news/search?q={company_name}"
         results = await read_webpages([news_url])
@@ -49,6 +61,23 @@ async def fetch_company_news(company_name: str) -> str:
         raise HTTPException(status_code=500, detail=f"Error getting company news: {str(e)}")
 
 async def fetch_company_reviews(company_name: str) -> dict:
+    """
+    **Fetch company reviews and ratings from various sources.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company to fetch reviews for\n
+    \n
+    **Returns:**\n
+        dict: Company reviews and ratings containing:\n
+        {\n
+            **"overall_rating"**: float,     # Average rating across platforms\n
+            **"total_reviews"**: int,        # Total number of reviews\n
+            **"review_summary"**: str        # AI-generated summary of reviews\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If review fetching fails\n
+    """
     try:
         url = "https://real-time-glassdoor-data.p.rapidapi.com/company-search"
         headers = {
@@ -86,7 +115,26 @@ async def fetch_company_reviews(company_name: str) -> dict:
         logger.error(f"Error getting company reviews: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company reviews: {str(e)}")
 
-async def fetch_company_overview(company_name: str):
+async def fetch_company_overview(company_name: str) -> dict:
+    """
+    **Fetch general overview information about a company.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company to fetch overview for\n
+    \n
+    **Returns:**\n
+        dict: Company overview containing:\n
+        {\n
+            **"description"**: str,          # Company description\n
+            **"industry"**: str,             # Industry sector\n
+            **"size"**: str,                 # Company size range\n
+            **"headquarters"**: str,         # Company headquarters location\n
+            **"founded"**: str               # Year founded\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If overview fetching fails\n
+    """
     try:
         start_time = time.time()
         overview_content = await company_insights_generator.generate_company_overview(company_name)
@@ -97,7 +145,27 @@ async def fetch_company_overview(company_name: str):
         logger.error(f"Error getting company overview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company overview: {str(e)}")
 
-async def fetch_company_role(company_name: str, user_role: str=None, location: str=None) -> str:
+async def fetch_company_role(company_name: str, user_role: str=None, location: str=None) -> dict:
+    """
+    **Fetch role-specific information about a company.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company\n
+        - **user_role**: Optional role to get specific information for\n
+        - **location**: Optional location to get regional information\n
+    \n
+    **Returns:**\n
+        dict: Role-specific information containing:\n
+        {\n
+            **"salary_range"**: str,         # Typical salary range for the role\n
+            **"requirements"**: List[str],    # Key requirements for the role\n
+            **"benefits"**: List[str],        # Company benefits\n
+            **"culture"**: str                # Company culture description\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If role information fetching fails\n
+    """
     try:
         start_time = time.time()
         role_content = await company_insights_generator.generate_company_role(company_name, user_role, location)
@@ -108,7 +176,27 @@ async def fetch_company_role(company_name: str, user_role: str=None, location: s
         logger.error(f"Error getting company role: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company role: {str(e)}")
     
-async def fetch_company_interview(company_name: str, user_role: str=None, location: str=None) -> str:
+async def fetch_company_interview(company_name: str, user_role: str=None, location: str=None) -> dict:
+    """
+    **Fetch interview-related information about a company.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company\n
+        - **user_role**: Optional role to get specific interview info for\n
+        - **location**: Optional location for regional interview practices\n
+    \n
+    **Returns:**\n
+        dict: Interview information containing:\n
+        {\n
+            **"process"**: str,              # Interview process description\n
+            **"common_questions"**: List[str], # Frequently asked questions\n
+            **"tips"**: List[str],            # Interview preparation tips\n
+            **"duration"**: str               # Typical interview process duration\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If interview information fetching fails\n
+    """
     try:
         start_time = time.time()
         interview_content = await company_insights_generator.generate_company_interview(company_name, user_role, location)
@@ -119,7 +207,28 @@ async def fetch_company_interview(company_name: str, user_role: str=None, locati
         logger.error(f"Error getting company interview: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting company interview: {str(e)}")
 
-async def get_company_insights_(company_name: str, user_role: str=None, location: str=None):
+async def get_company_insights_(company_name: str, user_role: str=None, location: str=None) -> dict:
+    """
+    **Generate comprehensive company insights by aggregating various data sources.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company\n
+        - **user_role**: Optional role to get specific insights for\n
+        - **location**: Optional location for regional insights\n
+    \n
+    **Returns:**\n
+        dict: Comprehensive company insights containing:\n
+        {\n
+            **"overview"**: dict,            # General company overview\n
+            **"news"**: str,                 # Recent news articles\n
+            **"reviews"**: dict,             # Company reviews and ratings\n
+            **"role_info"**: dict,           # Role-specific information\n
+            **"interview_info"**: dict       # Interview-related information\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If insights generation fails\n
+    """
     start_time = time.time()
     
     overview_content, role_content, interview_content, news_content, reviews_content = await asyncio.gather(
@@ -152,17 +261,27 @@ async def get_company_insights_(company_name: str, user_role: str=None, location
     
     return company_insights_generator.structure_company_insights(str(raw_content))
 
-async def get_cached_insights(company_name: str, user_role: Optional[str] = None, location: Optional[str] = None) -> Optional[dict]:
+async def get_cached_insights(company_name: str, user_role: Optional[str] = None, location: Optional[str] = None):
     """
-    Retrieve cached company insights from MongoDB if they exist.
-    
-    Args:
-        company_name (str): Name of the company
-        user_role (Optional[str]): Role of the user
-        location (Optional[str]): Location of the user
-        
-    Returns:
-        Optional[dict]: Cached insights data if found, None otherwise
+    **Retrieve cached company insights from MongoDB if they exist.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company\n
+        - **user_role**: Optional role to get specific insights for\n
+        - **location**: Optional location for regional insights\n
+    \n
+    **Returns:**\n
+        Optional[dict]: Cached insights data if found, None otherwise\n
+        {\n
+            **"overview"**: dict,            # General company overview\n
+            **"news"**: str,                 # Recent news articles\n
+            **"reviews"**: dict,             # Company reviews and ratings\n
+            **"role_info"**: dict,           # Role-specific information\n
+            **"interview_info"**: dict       # Interview-related information\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If database operation fails\n
     """
     try:
         # Use case-insensitive regex for all fields
@@ -192,7 +311,28 @@ async def get_company_insights(
     user_role: str = Query(None, description="Role of the user to get insights for"),
     location: str = Query(None, description="Location of the user to get insights for")
 ):
-    """Get company overview information using AI agent"""
+    """
+    **Retrieve or generate company insights with optional caching.**\n
+    \n
+    **Parameters:**\n
+        - **company_name**: Name of the company to get insights for\n
+        - **user_role**: Optional role to get specific insights for\n
+        - **location**: Optional location for regional insights\n
+    \n
+    **Returns:**\n
+        CompanyInsights object containing:\n
+        {\n
+            **"overview"**: dict,            # General company overview\n
+            **"news"**: str,                 # Recent news articles\n
+            **"reviews"**: dict,             # Company reviews and ratings\n
+            **"role_info"**: dict,           # Role-specific information\n
+            **"interview_info"**: dict       # Interview-related information\n
+        }\n
+    \n
+    **Raises:**\n
+        - **HTTPException (404)**: If company information cannot be found\n
+        - **HTTPException (500)**: If insights generation fails\n
+    """
     try:
         # Check cache first
         cached_result = await get_cached_insights(company_name, user_role, location)

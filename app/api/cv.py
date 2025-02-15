@@ -30,14 +30,13 @@ except ResourceExistsError:
 
 def get_safe_filename(filename: str) -> str:
     """
-    Convert filename to a safe format by replacing spaces with underscores
-    and removing any special characters except dots and underscores.
-    
-    Args:
-        filename (str): Original filename to sanitize
-        
-    Returns:
-        str: Sanitized filename containing only alphanumeric characters, dots, and underscores
+    **Convert filename to a safe format for storage.**\n
+    \n
+    **Parameters:**\n
+        - **filename**: Original filename to sanitize\n
+    \n
+    **Returns:**\n
+        str: Sanitized filename containing only alphanumeric characters, dots, and underscores\n
     """
     # Keep only alphanumeric chars, dots, and underscores
     safe_name = "".join(c for c in filename if c.isalnum() or c in "._")
@@ -45,10 +44,13 @@ def get_safe_filename(filename: str) -> str:
 
 async def delete_existing_cvs(user_id: str) -> None:
     """
-    Delete all existing CVs in the user's directory.
-    
-    Args:
-        user_id (str): ID of the user whose CVs should be deleted
+    **Delete all existing CVs for a specific user from storage.**\n
+    \n
+    **Parameters:**\n
+        - **user_id**: ID of the user whose CVs should be deleted\n
+    \n
+    **Raises:**\n
+        - **HTTPException (500)**: If deletion fails\n
     """
     try:
         blobs = container_client.list_blobs(name_starts_with=f"{user_id}/")
@@ -78,7 +80,7 @@ async def upload_cv(
         - **file**: CV file to upload (must be PDF or Word document)\n
     \n
     **Returns:**\n
-        Upload result containing:\n
+        dict: Upload result containing:\n
         {\n
             **"message"**: str,      # Success message\n
             **"file_name"**: str,    # Original filename (sanitized)\n
@@ -149,7 +151,7 @@ async def get_cv(
         - **user_id**: ID of the user to get CV for\n
     \n
     **Returns:**\n
-        CV information containing:\n
+        dict: CV information containing:\n
         {\n
             **"download_url"**: str,      # Temporary download URL for the CV (valid for 1 hour)\n
             **"file_name"**: str,         # Original filename\n
@@ -237,6 +239,7 @@ async def delete_cv(
         - **user_id**: ID of the user to delete CV for\n
     \n
     **Returns:**\n
+        dict: Operation result containing:\n
         {\n
             **"status"**: str,   # Status of the operation\n
             **"message"**: str   # Success message\n
