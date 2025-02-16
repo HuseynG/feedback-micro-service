@@ -82,12 +82,14 @@ class UploadCVResponse(BaseModel):
     data: UploadCVData
 
 class GetCVResponse(BaseModel):
-    download_url: str
-    file_name: str
-    content_type: str
-    size: int
-    last_modified: datetime
+    status: str
+    message: str
+    data: Optional[Dict] = None
     cv_content: Optional[Dict] = None
+    cv_analysis: Optional[Dict] = None
+    download_url: Optional[str] = None
+    file_name: Optional[str] = None
+    last_modified: datetime
 
 class DeleteCVResponse(BaseModel):
     status: str
@@ -204,9 +206,10 @@ async def upload_cv(
 
 @router.get(
     "/{user_id}",
+    status_code=status.HTTP_200_OK,
     summary="Get CV",
-    description="Retrieve a user's CV. Returns the download URL, file metadata, and parsed CV content.",
-    response_description="Returns CV URL, metadata, and content if found",
+    description="Get CV information and generate a download URL for the specified user",
+    response_description="Returns CV information and download URL",
     response_model=GetCVResponse
 )
 async def get_cv(
@@ -214,7 +217,7 @@ async def get_cv(
     db=Depends(get_database)
 ) -> GetCVResponse:
     """
-    **Retrieve a user's CV from storage.**\n
+    **Get CV information and generate a download URL for a specific user.**\n
     \n
     **Parameters:**\n
         - **user_id**: ID of the user to get CV for\n
@@ -222,35 +225,24 @@ async def get_cv(
     **Returns:**\n
         GetCVResponse: CV information containing:\n
         {\n
-            **"download_url"**: str,      # Temporary download URL for the CV (valid for 1 hour)\n
-            **"file_name"**: str,         # Original filename\n
-            **"content_type"**: str,      # File MIME type\n
-            **"size"**: int,              # File size in bytes\n
-            **"last_modified"**: datetime, # Last modification timestamp\n
-            **"cv_content"**: dict        # Parsed CV content from database\n
+            **"status"**: str,           # Status of the operation\n
+            **"message"**: str,          # Success message\n
+            **"data"**: dict,            # CV metadata\n
+            **"cv_content"**: dict,      # Extracted CV content\n
+            **"cv_analysis"**: dict,     # AI-generated CV analysis\n
+            **"download_url"**: str,     # Temporary download URL\n
+            **"file_name"**: str,        # Original filename\n
+            **"last_modified"**: datetime # Last modification time\n
         }\n
     \n
     **Raises:**\n
         - **HTTPException (404)**: If no CV is found for the user\n
         - **HTTPException (500)**: If retrieval fails\n
     """
-    # Get CV content from MongoDB
-    cv_data = db.cvs.find_one({"user_id": user_id})
-    if not cv_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "message": "CV not found",
-                "error": f"No CV found for user {user_id}"
-            }
-        )
-
-    # List all blobs in the user's directory
     try:
-        blobs = container_client.list_blobs(name_starts_with=f"{user_id}/")
-        blob_list = list(blobs)
-        
-        if not blob_list:
+        # Get CV data from MongoDB
+        cv_data = db.cvs.find_one({"user_id": user_id})
+        if not cv_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -258,36 +250,50 @@ async def get_cv(
                     "error": f"No CV found for user {user_id}"
                 }
             )
+
+        # List blobs to get CV file info
+        blobs = container_client.list_blobs(name_starts_with=f"{user_id}/")
+        cv_blob = next(blobs, None)
         
-        # Get the most recently modified blob
-        latest_blob = max(blob_list, key=lambda x: x.last_modified)
-        blob_client = container_client.get_blob_client(latest_blob.name)
-        
-        properties = blob_client.get_blob_properties()
-        
-        # Generate SAS token for temporary access (1 hour)
+        if not cv_blob:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "message": "CV file not found",
+                    "error": f"No CV file found in storage for user {user_id}"
+                }
+            )
+
+        # Generate SAS token for temporary download URL
         sas_token = generate_blob_sas(
-            account_name=blob_service_client.account_name,
-            container_name=container_name,
-            blob_name=latest_blob.name,
-            account_key=blob_service_client.credential.account_key,
+            account_name=container_client.account_name,
+            container_name=container_client.container_name,
+            blob_name=cv_blob.name,
+            account_key=container_client.credential.account_key,
             permission=BlobSasPermissions(read=True),
-            expiry=datetime.utcnow() + timedelta(hours=1)
+            expiry=datetime.utcnow() + timedelta(minutes=30)
         )
-        
-        # Construct download URL with SAS token
-        download_url = f"{blob_client.url}?{sas_token}"
-        
+
+        download_url = f"{container_client.url}/{cv_blob.name}?{sas_token}"
+
         return GetCVResponse(
+            status="success",
+            message=f"CV information retrieved successfully for user {user_id}",
+            data={
+                "size": cv_blob.size,
+                "content_type": cv_blob.content_settings.content_type,
+                "path": cv_blob.name
+            },
+            cv_content=cv_data.get("cv_content"),
+            cv_analysis=cv_data.get("cv_analysis"),
             download_url=download_url,
-            file_name=latest_blob.name.split('/')[-1],
-            content_type=properties.content_settings.content_type,
-            size=properties.size,
-            last_modified=properties.last_modified,
-            cv_content=cv_data.get('cv_content')
+            file_name=cv_data.get("filename"),
+            last_modified=cv_blob.last_modified
         )
-        
+
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         logger.error(f"Failed to get CV for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
