@@ -1,5 +1,5 @@
 import pytest
-from ai_utils.chatbot_utils import AI_Generator, QA_Feedback_Model
+from ai_utils.interview_ai_chat_utils import AI_Generator, QA_Feedback_Model
 from unittest.mock import patch, MagicMock, AsyncMock
 from openai import AzureOpenAI
 import json
@@ -8,7 +8,7 @@ import asyncio
 @pytest.fixture
 def ai_generator():
     """Fixture that provides an AI_Generator instance for testing."""
-    from app.ai_utils.chatbot_utils import AI_Generator
+    from app.ai_utils.interview_ai_chat_utils import AI_Generator
     return AI_Generator()
 
 @pytest.fixture(autouse=True)

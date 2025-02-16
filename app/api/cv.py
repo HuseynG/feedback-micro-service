@@ -6,6 +6,11 @@ from typing import Optional, Dict, Any
 from core.config import settings
 from datetime import datetime, timedelta
 import logging
+from ai_utils.cv_ai_chat_utils import DocumentProcessor
+from ai_utils.cv_schema import ATSJobRequirement
+import tempfile
+import json
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -61,45 +66,58 @@ async def delete_existing_cvs(user_id: str) -> None:
         logger.error(f"Error deleting existing CVs for user {user_id}: {str(e)}")
         raise
 
+class UploadCVData(BaseModel):
+    file_name: str
+    path: str
+    content_type: str
+    size: int
+    cv_content: dict
+
+class UploadCVResponse(BaseModel):
+    status: str
+    message: str
+    data: UploadCVData
+
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     summary="Upload CV",
     description="Upload or update a CV for the specified user. If a CV already exists, it will be deleted before uploading the new one.",
-    response_description="Returns a success message and the stored filename"
+    response_description="Returns a success message, stored filename, and extracted CV content",
+    response_model=UploadCVResponse
 )
 async def upload_cv(
     user_id: str = Query(..., description="ID of the user to upload CV for"),
-    file: UploadFile = File(..., description="CV file (PDF or Word document)")
-) -> Dict[str, Any]:
+    file: UploadFile = File(..., description="CV file (PDF only)")
+) -> UploadCVResponse:
     """
     **Upload or update a CV for a specific user.**\n
     \n
     **Parameters:**\n
         - **user_id**: ID of the user to upload CV for\n
-        - **file**: CV file to upload (must be PDF or Word document)\n
+        - **file**: CV file to upload (must be PDF)\n
     \n
     **Returns:**\n
         dict: Upload result containing:\n
         {\n
             **"message"**: str,      # Success message\n
             **"file_name"**: str,    # Original filename (sanitized)\n
-            **"path"**: str          # Full path in storage\n
+            **"path"**: str,         # Full path in storage\n
+            **"cv_content"**: dict   # Extracted CV content and analysis\n
         }\n
     \n
     **Raises:**\n
-        - **HTTPException (400)**: If file format is invalid (not PDF/Word)\n
+        - **HTTPException (400)**: If file format is invalid (not PDF)\n
         - **HTTPException (500)**: If upload fails\n
     """
     # Validate file type
-    if not file.content_type in ["application/pdf", "application/msword", 
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+    if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "message": "Invalid file format",
-                "error": "File must be a PDF or Word document",
-                "accepted_formats": ["PDF", "DOC", "DOCX"]
+                "error": "File must be a PDF document",
+                "accepted_formats": ["PDF"]
             }
         )
     
@@ -107,24 +125,38 @@ async def upload_cv(
         # Delete any existing CVs for this user
         await delete_existing_cvs(user_id)
         
-        # Upload the new CV
-        safe_filename = get_safe_filename(file.filename)
-        blob_name = f"{user_id}/{safe_filename}"
-        blob_client = container_client.get_blob_client(blob_name)
-        
-        contents = await file.read()
-        blob_client.upload_blob(contents, overwrite=True)
-        
-        return {
-            "status": "success",
-            "message": f"CV '{safe_filename}' uploaded successfully",
-            "data": {
-                "file_name": safe_filename,
-                "path": blob_name,
-                "content_type": file.content_type,
-                "size": len(contents)
-            }
-        }
+        # Create temporary file to process CV
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            contents = await file.read()
+            temp_file.write(contents)
+            temp_file.flush()
+            
+            # Extract CV content using DocumentProcessor
+            processor = DocumentProcessor()
+            cv_content = await processor.extract_cv_content(temp_file.name)
+            
+            # Upload the new CV
+            safe_filename = get_safe_filename(file.filename)
+            blob_name = f"{user_id}/{safe_filename}"
+            blob_client = container_client.get_blob_client(blob_name)
+            
+            # Upload to blob storage
+            blob_client.upload_blob(contents, overwrite=True)
+            
+            # Clean up temp file
+            os.unlink(temp_file.name)
+            
+            return UploadCVResponse(
+                status="success",
+                message=f"CV '{safe_filename}' uploaded successfully",
+                data=UploadCVData(
+                    file_name=safe_filename,
+                    path=blob_name,
+                    content_type=file.content_type,
+                    size=len(contents),
+                    cv_content=cv_content.model_dump(mode='json')
+                )
+            )
     except Exception as e:
         logger.error(f"Failed to upload CV for user {user_id}: {str(e)}")
         raise HTTPException(

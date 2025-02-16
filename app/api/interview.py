@@ -6,7 +6,7 @@ from utils.dependencies import get_database
 from bson import ObjectId
 from db.schemas import PyObjectId  # Ensure PyObjectId is imported
 from log.logging_config import logger
-from ai_utils.chatbot_utils import AI_Generator
+from ai_utils.interview_ai_chat_utils import AI_Generator
 import copy
 import random
 

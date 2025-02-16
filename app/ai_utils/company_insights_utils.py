@@ -2,7 +2,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
-from api.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList, RoleInsight, Salary, Benefits, Culture, CareerGrowth, WorkEnvironment, JobRole, InterviewInsights, CommonQuestions, InterviewProcess, PreparationGuide
+from ai_utils.insight_schema import CompanyInsights, CompanyOverview, CompanyNewsList, CompanyReviewList, RoleInsight, Salary, Benefits, Culture, CareerGrowth, WorkEnvironment, JobRole, InterviewInsights, CommonQuestions, InterviewProcess, PreparationGuide
 
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
