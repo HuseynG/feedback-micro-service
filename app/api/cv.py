@@ -74,6 +74,7 @@ class UploadCVData(BaseModel):
     content_type: str
     size: int
     cv_content: dict
+    cv_analysis: Optional[dict] = None
 
 class UploadCVResponse(BaseModel):
     status: str
@@ -93,7 +94,7 @@ class DeleteCVResponse(BaseModel):
     message: str
 
 @router.post(
-    "/upload/{user_id}",
+    "/{user_id}",
     status_code=status.HTTP_201_CREATED,
     summary="Upload CV",
     description="Upload or update a CV for the specified user. If a CV already exists, it will be deleted before uploading the new one.",
@@ -118,7 +119,8 @@ async def upload_cv(
             **"message"**: str,      # Success message\n
             **"file_name"**: str,    # Original filename (sanitized)\n
             **"path"**: str,         # Full path in storage\n
-            **"cv_content"**: dict   # Extracted CV content and analysis\n
+            **"cv_content"**: dict,  # Extracted CV content and analysis\n
+            **"cv_analysis"**: dict  # AI-generated CV analysis\n
         }\n
     \n
     **Raises:**\n
@@ -131,8 +133,7 @@ async def upload_cv(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "message": "Invalid file format",
-                "error": "File must be a PDF document",
-                "accepted_formats": ["PDF"]
+                "error": "Only PDF files are supported"
             }
         )
     
@@ -150,10 +151,14 @@ async def upload_cv(
             processor = DocumentProcessor()
             cv_content = await processor.extract_cv_content(temp_file.name)
             
-            # Store CV content in MongoDB
+            # Analyze CV
+            cv_analysis = await processor.analyze_cv(temp_file.name)
+            
+            # Store CV content and analysis in MongoDB
             cv_data = {
                 "user_id": user_id,
                 "cv_content": cv_content.model_dump(mode='json'),  # Use model_dump with json mode to properly handle all types
+                "cv_analysis": cv_analysis.model_dump(mode='json'),
                 "filename": get_safe_filename(file.filename),
                 "updated_at": datetime.utcnow()
             }
@@ -183,7 +188,8 @@ async def upload_cv(
                     path=blob_name,
                     content_type=file.content_type,
                     size=len(contents),
-                    cv_content=cv_content.model_dump(mode='json')
+                    cv_content=cv_content.model_dump(mode='json'),
+                    cv_analysis=cv_analysis.model_dump(mode='json')
                 )
             )
     except Exception as e:
