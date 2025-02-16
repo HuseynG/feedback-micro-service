@@ -80,6 +80,14 @@ class UploadCVResponse(BaseModel):
     message: str
     data: UploadCVData
 
+class GetCVResponse(BaseModel):
+    download_url: str
+    file_name: str
+    content_type: str
+    size: int
+    last_modified: datetime
+    cv_content: Optional[Dict] = None
+
 @router.post(
     "/upload/{user_id}",
     status_code=status.HTTP_201_CREATED,
@@ -187,12 +195,14 @@ async def upload_cv(
 @router.get(
     "/{user_id}",
     summary="Get CV",
-    description="Retrieve a user's CV. Returns the download URL with a temporary access token and file metadata.",
-    response_description="Returns CV URL and metadata if found"
+    description="Retrieve a user's CV. Returns the download URL, file metadata, and parsed CV content.",
+    response_description="Returns CV URL, metadata, and content if found",
+    response_model=GetCVResponse
 )
 async def get_cv(
-    user_id: str = Path(..., description="ID of the user to get CV for")
-) -> Dict[str, Any]:
+    user_id: str = Path(..., description="ID of the user to get CV for"),
+    db=Depends(get_database)
+) -> GetCVResponse:
     """
     **Retrieve a user's CV from storage.**\n
     \n
@@ -200,19 +210,31 @@ async def get_cv(
         - **user_id**: ID of the user to get CV for\n
     \n
     **Returns:**\n
-        dict: CV information containing:\n
+        GetCVResponse: CV information containing:\n
         {\n
             **"download_url"**: str,      # Temporary download URL for the CV (valid for 1 hour)\n
             **"file_name"**: str,         # Original filename\n
             **"content_type"**: str,      # File MIME type\n
             **"size"**: int,              # File size in bytes\n
-            **"last_modified"**: datetime # Last modification timestamp\n
+            **"last_modified"**: datetime, # Last modification timestamp\n
+            **"cv_content"**: dict        # Parsed CV content from database\n
         }\n
     \n
     **Raises:**\n
         - **HTTPException (404)**: If no CV is found for the user\n
         - **HTTPException (500)**: If retrieval fails\n
     """
+    # Get CV content from MongoDB
+    cv_data = db.cvs.find_one({"user_id": user_id})
+    if not cv_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "message": "CV not found",
+                "error": f"No CV found for user {user_id}"
+            }
+        )
+
     # List all blobs in the user's directory
     try:
         blobs = container_client.list_blobs(name_starts_with=f"{user_id}/")
@@ -243,30 +265,24 @@ async def get_cv(
             expiry=datetime.utcnow() + timedelta(hours=1)
         )
         
-        # Create the full URL with SAS token
+        # Construct download URL with SAS token
         download_url = f"{blob_client.url}?{sas_token}"
-        file_name = latest_blob.name.split('/')[-1]
         
-        return {
-            "status": "success",
-            "message": f"CV '{file_name}' retrieved successfully",
-            "data": {
-                "download_url": download_url,
-                "file_name": file_name,
-                "content_type": properties.content_settings.content_type,
-                "size": properties.size,
-                "last_modified": properties.last_modified
-            }
-        }
+        return GetCVResponse(
+            download_url=download_url,
+            file_name=latest_blob.name.split('/')[-1],
+            content_type=properties.content_settings.content_type,
+            size=properties.size,
+            last_modified=properties.last_modified,
+            cv_content=cv_data.get('cv_content')
+        )
         
     except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        logger.error(f"Failed to retrieve CV for user {user_id}: {str(e)}")
+        logger.error(f"Failed to get CV for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "message": "Failed to retrieve CV",
+                "message": "Failed to get CV",
                 "error": str(e)
             }
         )
