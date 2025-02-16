@@ -88,6 +88,10 @@ class GetCVResponse(BaseModel):
     last_modified: datetime
     cv_content: Optional[Dict] = None
 
+class DeleteCVResponse(BaseModel):
+    status: str
+    message: str
+
 @router.post(
     "/upload/{user_id}",
     status_code=status.HTTP_201_CREATED,
@@ -291,20 +295,22 @@ async def get_cv(
     "/{user_id}",
     status_code=status.HTTP_200_OK,
     summary="Delete CV",
-    description="Delete a user's CV from storage.",
-    response_description="Returns success message on deletion"
+    description="Delete a user's CV from both storage and database.",
+    response_description="Returns success message on deletion",
+    response_model=DeleteCVResponse
 )
 async def delete_cv(
-    user_id: str = Path(..., description="ID of the user to delete CV for")
-) -> Dict[str, str]:
+    user_id: str = Path(..., description="ID of the user to delete CV for"),
+    db=Depends(get_database)
+) -> DeleteCVResponse:
     """
-    **Delete a user's CV from storage.**\n
+    **Delete a user's CV from storage and database.**\n
     \n
     **Parameters:**\n
         - **user_id**: ID of the user to delete CV for\n
     \n
     **Returns:**\n
-        dict: Operation result containing:\n
+        DeleteCVResponse: Operation result containing:\n
         {\n
             **"status"**: str,   # Status of the operation\n
             **"message"**: str   # Success message\n
@@ -314,9 +320,23 @@ async def delete_cv(
         - **HTTPException (404)**: If no CV is found for the user\n
         - **HTTPException (500)**: If deletion fails\n
     """
-    deleted = False
+    # First check if CV exists in MongoDB
+    cv_data = db.cvs.find_one({"user_id": user_id})
+    if not cv_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "message": "CV not found",
+                "error": f"No CV found for user {user_id}"
+            }
+        )
+
     try:
-        # List and delete all blobs in the user's directory
+        # Delete from MongoDB first
+        db.cvs.delete_one({"user_id": user_id})
+        
+        # Then delete from Azure Blob Storage
+        deleted = False
         blobs = container_client.list_blobs(name_starts_with=f"{user_id}/")
         for blob in blobs:
             blob_client = container_client.get_blob_client(blob.name)
@@ -324,25 +344,14 @@ async def delete_cv(
             deleted = True
         
         if not deleted:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "message": "CV not found",
-                    "error": f"No CV found for user {user_id}"
-                }
-            )
+            logger.warning(f"No CV files found in storage for user {user_id}")
         
-        # Delete CV content from MongoDB
-        mongodb.cvs.delete_one({"user_id": user_id})
-        
-        return {
-            "status": "success",
-            "message": f"CV for user {user_id} deleted successfully"
-        }
-        
+        return DeleteCVResponse(
+            status="success",
+            message=f"CV for user {user_id} deleted successfully"
+        )
+            
     except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
         logger.error(f"Failed to delete CV for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
