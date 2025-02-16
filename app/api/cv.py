@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Query, Path, Depends
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from azure.core.exceptions import ResourceExistsError
 import os
@@ -11,6 +11,8 @@ from ai_utils.cv_schema import ATSJobRequirement
 import tempfile
 import json
 from pydantic import BaseModel
+from database.mongodb import mongodb
+from utils.dependencies import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +81,7 @@ class UploadCVResponse(BaseModel):
     data: UploadCVData
 
 @router.post(
-    "",
+    "/upload/{user_id}",
     status_code=status.HTTP_201_CREATED,
     summary="Upload CV",
     description="Upload or update a CV for the specified user. If a CV already exists, it will be deleted before uploading the new one.",
@@ -87,8 +89,9 @@ class UploadCVResponse(BaseModel):
     response_model=UploadCVResponse
 )
 async def upload_cv(
-    user_id: str = Query(..., description="ID of the user to upload CV for"),
-    file: UploadFile = File(..., description="CV file (PDF only)")
+    user_id: str = Path(..., description="ID of the user to upload CV for"),
+    file: UploadFile = File(..., description="CV file (PDF only)"),
+    db=Depends(get_database)
 ) -> UploadCVResponse:
     """
     **Upload or update a CV for a specific user.**\n
@@ -135,6 +138,20 @@ async def upload_cv(
             processor = DocumentProcessor()
             cv_content = await processor.extract_cv_content(temp_file.name)
             
+            # Store CV content in MongoDB
+            cv_data = {
+                "user_id": user_id,
+                "cv_content": cv_content.model_dump(mode='json'),  # Use model_dump with json mode to properly handle all types
+                "filename": get_safe_filename(file.filename),
+                "updated_at": datetime.utcnow()
+            }
+            
+            db.cvs.update_one(
+                {"user_id": user_id},
+                {"$set": cv_data},
+                upsert=True
+            )
+            
             # Upload the new CV
             safe_filename = get_safe_filename(file.filename)
             blob_name = f"{user_id}/{safe_filename}"
@@ -168,13 +185,13 @@ async def upload_cv(
         )
 
 @router.get(
-    "",
+    "/{user_id}",
     summary="Get CV",
     description="Retrieve a user's CV. Returns the download URL with a temporary access token and file metadata.",
     response_description="Returns CV URL and metadata if found"
 )
 async def get_cv(
-    user_id: str = Query(..., description="ID of the user to get CV for")
+    user_id: str = Path(..., description="ID of the user to get CV for")
 ) -> Dict[str, Any]:
     """
     **Retrieve a user's CV from storage.**\n
@@ -255,14 +272,14 @@ async def get_cv(
         )
 
 @router.delete(
-    "",
+    "/{user_id}",
     status_code=status.HTTP_200_OK,
     summary="Delete CV",
     description="Delete a user's CV from storage.",
     response_description="Returns success message on deletion"
 )
 async def delete_cv(
-    user_id: str = Query(..., description="ID of the user to delete CV for")
+    user_id: str = Path(..., description="ID of the user to delete CV for")
 ) -> Dict[str, str]:
     """
     **Delete a user's CV from storage.**\n
@@ -298,6 +315,9 @@ async def delete_cv(
                     "error": f"No CV found for user {user_id}"
                 }
             )
+        
+        # Delete CV content from MongoDB
+        mongodb.cvs.delete_one({"user_id": user_id})
         
         return {
             "status": "success",

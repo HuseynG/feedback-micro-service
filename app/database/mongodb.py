@@ -28,8 +28,10 @@ class MongoDB:
             # Initialize collections
             cls.interviews = cls.db.get_collection("interviews")
             cls.company_insights = cls.db.get_collection("company_insights")
+            cls.cvs = cls.db.get_collection("cvs")
             
             cls.company_insights.create_index([("createdAt", 1)], expireAfterSeconds=3600*24*7)
+            cls.cvs.create_index([("user_id", 1)], unique=True)
 
             # Test the connection
             cls.client.admin.command('ping')
@@ -67,6 +69,12 @@ class MongoDB:
         """Get company insights collection"""
         db = cls.get_db()
         return db.company_insights
+
+    @classmethod
+    def get_cvs(cls):
+        """Get CVs collection"""
+        db = cls.get_db()
+        return db.cvs
 
 # Create global instance
 mongodb = MongoDB()
