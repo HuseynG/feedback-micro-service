@@ -21,12 +21,15 @@ AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION')
 
 class DocumentProcessor:
     def __init__(self):
-        self.model = AzureChatOpenAI(
+        
+        self.model = json.loads(os.getenv('MODEL_CONFIG'))
+
+        self.llm = AzureChatOpenAI(
             openai_api_key=AZURE_OPENAI_API_KEY,
             azure_endpoint=AZURE_OPENAI_ENDPOINT,
             openai_api_type="azure",
             openai_api_version=AZURE_OPENAI_API_VERSION,
-            deployment_name="4o-mini",
+            deployment_name=self.model["default_model"],
             temperature=0,
             seed=123
         )
@@ -64,7 +67,7 @@ class DocumentProcessor:
             message = HumanMessage(content=message_content)
             
             # Get response with structured output
-            structured_model = self.model.with_structured_output(output_format)
+            structured_model = self.llm.with_structured_output(output_format)
             response = await structured_model.ainvoke([
                 SystemMessage(content=system_prompt),
                 message
@@ -107,7 +110,7 @@ class DocumentProcessor:
             message = HumanMessage(content=f"{JOB_MATCH_PROMPT}\n\nCV Content: {json.dumps(cv.model_dump(mode='json'))}\n\nJob Requirements: {json.dumps(job_req.model_dump(mode='json'))}")
             
             # Get structured analysis
-            structured_model = self.model.with_structured_output(CVAnalysisResult)
+            structured_model = self.llm.with_structured_output(CVAnalysisResult)
             response = await structured_model.ainvoke([
                 SystemMessage(content=JOB_MATCH_PROMPT),
                 message

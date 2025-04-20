@@ -113,18 +113,14 @@ class AI_Generator:
         api_key = os.getenv('AZURE_OPENAI_API_KEY')
         azure_openai_base_endpoint = os.getenv('AZURE_OPENAI_BASE_API_ENDPOINT')
         azure_openai_api_version = os.getenv('AZURE_OPENAI_API_VERSION')
-
-        self.model = {
-            'defualt_model':'gpt-4o-mini',
-            'faster_model': 'gpt-4.1-nano'
-        }
+        self.model = json.loads(os.getenv('MODEL_CONFIG'))
 
         self.question_generator_model = AzureChatOpenAI(
             openai_api_key=api_key,
             azure_endpoint=azure_openai_base_endpoint,
             openai_api_type="azure",
             openai_api_version=azure_openai_api_version,
-            deployment_name=self.model["defualt_model"],
+            deployment_name=self.model["default_model"],
             temperature=0,
             seed=123
         )
@@ -134,7 +130,7 @@ class AI_Generator:
             azure_endpoint=azure_openai_base_endpoint,
             openai_api_type="azure",
             openai_api_version=azure_openai_api_version,
-            deployment_name=self.model["defualt_model"],
+            deployment_name=self.model["default_model"],
             temperature=0,
             seed=123
         )

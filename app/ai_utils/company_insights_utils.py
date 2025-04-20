@@ -16,9 +16,12 @@ class CompanyInsightsGenerator:
         api_key = os.getenv('AZURE_OPENAI_API_KEY')
         azure_openai_base_endpoint = os.getenv('AZURE_OPENAI_BASE_API_ENDPOINT')
         azure_openai_api_version = os.getenv('AZURE_OPENAI_API_VERSION')
-
+        # Load base model config from environment
+        openai_base_model_config = json.loads(os.getenv('MODEL_CONFIG'))
+        
+        # Merge with additional Gemini-specific models
         self.model = {
-            'default_model': '4o-mini',
+            **openai_base_model_config,  # Unpack the base config
             'overview_model': 'gemini-2.0-flash-exp',
             'role_model': 'gemini-2.0-flash-exp',
             'interview_model': 'gemini-2.0-flash-exp'
