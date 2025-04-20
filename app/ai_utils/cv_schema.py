@@ -96,6 +96,13 @@ class Education(BaseModel):
         description="Location of the institution"
     )
 
+    @field_validator('end_date', 'start_date', mode='before')
+    @classmethod
+    def validate_date_fields(cls, v):
+        if isinstance(v, str) and v.lower() in ['present', 'current', 'now', 'ongoing']:
+            return None
+        return v
+
 
 class WorkExperience(BaseModel):
     """
@@ -134,6 +141,13 @@ class WorkExperience(BaseModel):
         alias='currently_working',
         description="Indicates if this is the current job"
     )
+
+    @field_validator('end_date', mode='before')
+    @classmethod
+    def validate_end_date(cls, v):
+        if isinstance(v, str) and v.lower() in ['present', 'current', 'now', 'ongoing']:
+            return None
+        return v
 
 
 class Project(BaseModel):
@@ -204,6 +218,13 @@ class Certification(BaseModel):
         alias='credential_url',
         description="URL to verify the certification"
     )
+    
+    @field_validator('issue_date', 'expiration_date', mode='before')
+    @classmethod
+    def validate_date_fields(cls, v):
+        if isinstance(v, str) and v.lower() in ['present', 'current', 'now', 'ongoing', 'no expiration', 'never']:
+            return None
+        return v
 
 
 class AwardAchievement(BaseModel):
@@ -229,6 +250,13 @@ class AwardAchievement(BaseModel):
         alias='description',
         description="Description of the award and its significance"
     )
+    
+    @field_validator('date_awarded', mode='before')
+    @classmethod
+    def validate_date_fields(cls, v):
+        if isinstance(v, str) and v.lower() in ['present', 'current', 'now', 'ongoing']:
+            return None
+        return v
 
 
 class Publication(BaseModel):
@@ -259,6 +287,13 @@ class Publication(BaseModel):
         alias='description',
         description="Brief description or abstract"
     )
+    
+    @field_validator('publication_date', mode='before')
+    @classmethod
+    def validate_date_fields(cls, v):
+        if isinstance(v, str) and v.lower() in ['present', 'current', 'now', 'ongoing', 'forthcoming', 'in press']:
+            return None
+        return v
 
 
 class LanguageProficiency(BaseModel):
