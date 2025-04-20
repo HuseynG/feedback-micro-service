@@ -8,7 +8,7 @@ from pdf2image import convert_from_path
 from typing import List, Dict, Any
 from langchain_openai import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -23,6 +23,8 @@ class DocumentProcessor:
     def __init__(self):
         
         self.model = json.loads(os.getenv('MODEL_CONFIG'))
+
+        self.pdf_cache = {}
 
         self.llm = AzureChatOpenAI(
             openai_api_key=AZURE_OPENAI_API_KEY,
@@ -39,39 +41,50 @@ class DocumentProcessor:
         Function 1: Extract CV content and return structured data
         """
         try:
-            # Convert PDF to images
-            images = convert_from_path(pdf_path)
+            cache_key = f"{pdf_path}:{system_prompt}"
+            if cache_key in self.pdf_cache:
+                return self.pdf_cache[cache_key]
             
-            # Create message content
+            images = convert_from_path(
+                pdf_path,
+                dpi=150,  
+                thread_count=2,  
+                use_cropbox=True,  
+                grayscale=False  
+            )
+            
             message_content = [
                 {"type": "text", "text": system_prompt}
             ]
             
-            # Process images
             for i, image in enumerate(images):
+                max_size = (1200, 1200)  
+                if image.width > max_size[0] or image.height > max_size[1]:
+                    image.thumbnail(max_size, resample=1)  
+                
                 import io
                 img_byte_arr = io.BytesIO()
-                image.save(img_byte_arr, format='PNG')
+                image.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
                 img_byte_arr = img_byte_arr.getvalue()
                 base64_image = base64.b64encode(img_byte_arr).decode('utf-8')
                 
                 message_content.append({
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/png;base64,{base64_image}"
+                        "url": f"data:image/jpeg;base64,{base64_image}"
                     }
                 })
                 print(f"Processed image {i+1}/{len(images)}")
 
-            # Create message with all images
             message = HumanMessage(content=message_content)
             
-            # Get response with structured output
             structured_model = self.llm.with_structured_output(output_format)
             response = await structured_model.ainvoke([
                 SystemMessage(content=system_prompt),
                 message
             ])
+            
+            self.pdf_cache[cache_key] = response
             
             return response
             
@@ -95,7 +108,6 @@ class DocumentProcessor:
             CVAnalysisStats: Comprehensive analysis of the CV
         """
         try:
-            # First extract CV content
             return await self.read_cv(pdf_path, CV_FEEDBACK_ANALYSIS_PROMPT, CVAnalysisStats)
             
         except Exception as e:
@@ -106,10 +118,8 @@ class DocumentProcessor:
         Function 3: Compare CV against job description
         """
         try:
-            # Create job matching message
             message = HumanMessage(content=f"{JOB_MATCH_PROMPT}\n\nCV Content: {json.dumps(cv.model_dump(mode='json'))}\n\nJob Requirements: {json.dumps(job_req.model_dump(mode='json'))}")
             
-            # Get structured analysis
             structured_model = self.llm.with_structured_output(CVAnalysisResult)
             response = await structured_model.ainvoke([
                 SystemMessage(content=JOB_MATCH_PROMPT),
@@ -129,15 +139,12 @@ async def main():
     pdf_path = "HG_CV.pdf"
     
     try:
-        # # Step 1: Extract CV content
         cv_content = await processor.extract_cv_content(pdf_path)
         print("\nStep 1: CV Content Extracted")
         print("="*50)
         print(json.dumps(cv_content.model_dump(mode='json'), indent=2))
-        
 
 
-        # Step 2: Analyze CV
         cv_analysis = await processor.analyze_cv(pdf_path)
         print("\nStep 2: CV Analysis")
         print("="*50)
@@ -145,7 +152,6 @@ async def main():
 
 
         
-        # Step 3: Match CV to job (example job requirement)
         job_req = ATSJobRequirement(
             job_title="Senior Software Engineer",
             job_description="Looking for an experienced software engineer...",

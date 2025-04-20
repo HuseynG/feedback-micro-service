@@ -74,6 +74,51 @@ Your goal is to produce a structured analysis of the provided CV according to th
       "simplified": "clearer, more concise version"
     }
   },
+  "industry_specific_analysis": {
+    "industry": "identified industry based on CV content",
+    "relevantTrends": ["trend 1", "trend 2", "trend 3"],
+    "keywordRecommendations": ["keyword 1", "keyword 2", "keyword 3"],
+    "industrySpecificStrengths": ["strength 1", "strength 2"],
+    "industrySpecificGaps": ["gap 1", "gap 2"],
+    "competitiveAdvantage": "detailed analysis of candidate's competitive advantage in the industry"
+  },
+  "skills_gap_analysis": {
+    "coreSkills": [
+      {
+        "skillName": "skill name",
+        "currentLevel": 7,
+        "marketDemand": 9,
+        "improvement": "specific improvement suggestion",
+        "relevantCertifications": ["certification 1", "certification 2"]
+      }
+    ],
+    "missingCriticalSkills": ["missing skill 1", "missing skill 2"],
+    "overallSkillScore": 75,
+    "skillsDistribution": {
+      "Technical": 60,
+      "Soft Skills": 25,
+      "Domain Knowledge": 15
+    },
+    "recommendedUpskilling": ["upskilling recommendation 1", "upskilling recommendation 2"],
+    "skillsMarketRelevance": "analysis of how relevant the candidate's skills are to the current market"
+  },
+  "career_trajectory": {
+    "currentCareerStage": "current career stage",
+    "careerProgression": "analysis of career progression so far",
+    "growthRate": "assessment of growth rate compared to industry average",
+    "potentialPaths": [
+      {
+        "title": "potential job title",
+        "timeframe": "Short-term (1-2 years)",
+        "requiredSkills": ["skill 1", "skill 2"],
+        "potentialEmployers": ["employer type 1", "employer type 2"],
+        "estimatedSalaryRange": "$X-$Y",
+        "growthPotential": "growth potential description"
+      }
+    ],
+    "recommendedNextSteps": ["next step 1", "next step 2"],
+    "longTermOutlook": "analysis of long-term career prospects"
+  },
   "wow_factor_opportunities": [
     {
       "currentState": "description of current state",
@@ -110,9 +155,12 @@ Important Guidelines:
 2. Provide specific, implementable improvements
 3. Include metrics and achievements where possible
 4. Give exact formatting suggestions (fonts, colors, spacing)
-5. Ensure all suggestions follow the exact structure shown above
+5. For the skills assessment, use a 1-10 scale where 10 is expert level
+6. For industry analysis, identify the most relevant industry based on the CV content
+7. For career trajectory, provide realistic and actionable career path options
+8. Ensure all suggestions follow the exact structure shown above
 
-Remember: Focus on providing exact text changes that can be implemented immediately.
+Remember: Focus on providing exact text changes that can be implemented immediately, along with strategic insights for long-term career development.
 """
 
 JOB_MATCH_PROMPT = """You are an expert in CV/Resume and job matching analysis. Compare the provided CV against the job description and provide detailed insights.

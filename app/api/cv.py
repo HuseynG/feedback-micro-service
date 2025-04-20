@@ -7,12 +7,14 @@ from core.config import settings
 from datetime import datetime, timedelta
 import logging
 from ai_utils.cv_ai_chat_utils import DocumentProcessor
-from ai_utils.cv_schema import ATSJobRequirement
+from ai_utils.cv_schema import ATSJobRequirement, CV, CVAnalysisStats
 import tempfile
 import json
 from pydantic import BaseModel
 from database.mongodb import mongodb
 from utils.dependencies import get_database
+import asyncio
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -149,20 +151,35 @@ async def upload_cv(
             temp_file.write(contents)
             temp_file.flush()
             
-            # Extract CV content using DocumentProcessor
-            processor = DocumentProcessor()
-            cv_content = await processor.extract_cv_content(temp_file.name)
+            # Check if this exact CV content already exists in the database
+            content_hash = hashlib.md5(contents).hexdigest()
+            existing_cv = db.cvs.find_one({"user_id": user_id, "content_hash": content_hash})
             
-            # Analyze CV
-            cv_analysis = await processor.analyze_cv(temp_file.name)
+            if existing_cv:
+                # If the same content was already processed, reuse the results
+                logger.info(f"Reusing existing CV analysis for user {user_id} (same content detected)")
+                cv_content_dict = existing_cv.get("cv_content")
+                cv_analysis_dict = existing_cv.get("cv_analysis")
+                
+                # Convert dictionaries back to Pydantic models
+                cv_content = CV.model_validate(cv_content_dict)
+                cv_analysis = CVAnalysisStats.model_validate(cv_analysis_dict)
+            else:
+                # Extract CV content and analyze in parallel
+                processor = DocumentProcessor()
+                cv_content, cv_analysis = await asyncio.gather(
+                    processor.extract_cv_content(temp_file.name),
+                    processor.analyze_cv(temp_file.name)
+                )
             
             # Store CV content and analysis in MongoDB
             cv_data = {
                 "user_id": user_id,
-                "cv_content": cv_content.model_dump(mode='json'),  # Use model_dump with json mode to properly handle all types
+                "cv_content": cv_content.model_dump(mode='json'),
                 "cv_analysis": cv_analysis.model_dump(mode='json'),
                 "filename": get_safe_filename(file.filename),
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.utcnow(),
+                "content_hash": content_hash  # Store the content hash for future comparisons
             }
             
             db.cvs.update_one(

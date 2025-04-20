@@ -467,6 +467,50 @@ class SectionModification(BaseModel):
     current: str
     changeTo: str
 
+class IndustrySpecificInsight(BaseModel):
+    """Structure for industry-specific insights"""
+    industry: str
+    relevantTrends: List[str]
+    keywordRecommendations: List[str]
+    industrySpecificStrengths: List[str]
+    industrySpecificGaps: List[str]
+    competitiveAdvantage: str
+
+class SkillAssessment(BaseModel):
+    """Structure for individual skill assessment"""
+    skillName: str
+    currentLevel: int  # 1-10 scale
+    marketDemand: int  # 1-10 scale
+    improvement: str
+    relevantCertifications: List[str] = Field(default_factory=list)
+
+class SkillsGapAnalysis(BaseModel):
+    """Structure for comprehensive skills gap analysis"""
+    coreSkills: List[SkillAssessment]
+    missingCriticalSkills: List[str]
+    overallSkillScore: int  # 1-100 scale
+    skillsDistribution: Dict[str, int]  # Category -> Percentage
+    recommendedUpskilling: List[str]
+    skillsMarketRelevance: str
+
+class CareerPathOption(BaseModel):
+    """Structure for a potential career path option"""
+    title: str
+    timeframe: str  # e.g., "Short-term (1-2 years)"
+    requiredSkills: List[str]
+    potentialEmployers: List[str]
+    estimatedSalaryRange: str
+    growthPotential: str
+
+class CareerTrajectoryAnalysis(BaseModel):
+    """Structure for analyzing career trajectory and future opportunities"""
+    currentCareerStage: str
+    careerProgression: str  # Analysis of progression so far
+    growthRate: str  # e.g., "Above average for industry"
+    potentialPaths: List[CareerPathOption]
+    recommendedNextSteps: List[str]
+    longTermOutlook: str
+
 class CVAnalysisStats(BaseModel):
     """
     Comprehensive analysis statistics and metrics for a CV with frontend-friendly structure
@@ -498,6 +542,18 @@ class CVAnalysisStats(BaseModel):
             content=ContentPair(current="", simplified="")
         ),
         description="Assessment of content clarity with specific examples"
+    )
+    industry_specific_analysis: Optional[IndustrySpecificInsight] = Field(
+        default=None,
+        description="Industry-specific analysis and recommendations"
+    )
+    skills_gap_analysis: Optional[SkillsGapAnalysis] = Field(
+        default=None,
+        description="Detailed analysis of skills with market relevance scoring"
+    )
+    career_trajectory: Optional[CareerTrajectoryAnalysis] = Field(
+        default=None,
+        description="Analysis of career progression and future opportunities"
     )
     wow_factor_opportunities: List[WowFactorOpportunity] = Field(
         default_factory=list,
