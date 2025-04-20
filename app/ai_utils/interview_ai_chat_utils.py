@@ -115,7 +115,8 @@ class AI_Generator:
         azure_openai_api_version = os.getenv('AZURE_OPENAI_API_VERSION')
 
         self.model = {
-            'defualt_model':'4o-mini',
+            'defualt_model':'gpt-4o-mini',
+            'faster_model': 'gpt-4.1-nano'
         }
 
         self.question_generator_model = AzureChatOpenAI(
