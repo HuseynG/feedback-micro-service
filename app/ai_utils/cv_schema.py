@@ -56,6 +56,25 @@ class PersonalInfo(BaseModel):
         description="List of relevant URLs (e.g., LinkedIn, GitHub, personal website, etc.)"
     )
 
+    @field_validator('urls', mode='before')
+    @classmethod
+    def validate_urls(cls, v):
+        if isinstance(v, list):
+            result = []
+            for url in v:
+                if isinstance(url, str):
+                    # Check if the URL has a protocol
+                    if not url.startswith(('http://', 'https://')):
+                        # For LinkedIn URLs
+                        if 'linkedin' in url.lower() and not url.startswith(('http://', 'https://')):
+                            url = f"https://www.{url}" if not url.startswith('www.') else f"https://{url}"
+                        # For other URLs without protocol
+                        else:
+                            url = f"https://{url}"
+                result.append(url)
+            return result
+        return v
+
 
 class Education(BaseModel):
     """
